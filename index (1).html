@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Simply Recycle – AMS247-style</title>
+<style>
+  :root{
+    --bg:#070c16; --bg2:#0b1320; --card:#0f1730; --muted:#8ca0c3;
+    --accent:#7dd3fc; --ok:#22c55e; --danger:#ef4444; --ink:#e5efff
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:radial-gradient(80vw 80vh at 10% 10%, #0f1f3d 0%, #070c16 60%), linear-gradient(180deg, #0b1320, #070c16 60%);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",sans-serif}
+
+  /* --- Auth Screen --- */
+  #authScreen{
+    position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
+    padding:24px; background:radial-gradient(60vw 60vh at 20% 10%, #112346 0%, #070c16 60%); overflow:hidden;
+  }
+  #authScreen::before, #authScreen::after{
+    content:""; position:absolute; width:60vmax; height:60vmax; filter:blur(60px);
+    background:radial-gradient(closest-side, rgba(125,211,252,.18), transparent 60%);
+    animation:float 22s linear infinite;
+  }
+  #authScreen::after{ top:auto; bottom:-20vmax; left:auto; right:-20vmax; animation-duration:28s;}
+  @keyframes float{ from{ transform:translate(-10%, -10%) rotate(0deg);} to{ transform:translate(10%, 10%) rotate(360deg);} }
+
+  .auth-card{
+    width:min(520px, 96vw); background:rgba(17,26,43,.75); backdrop-filter: blur(10px);
+    border:1px solid #22314f; border-radius:18px; padding:18px; box-shadow:0 20px 80px rgba(0,0,0,.45);
+  }
+  .title{display:flex; align-items:center; gap:10px; margin:0 0 8px}
+  .title .dot{width:12px; height:12px; border-radius:999px; background:var(--accent); box-shadow:0 0 16px #7dd3fc}
+  .subtitle{color:var(--muted); margin:0 0 12px}
+  .row{display:flex; gap:10px; flex-wrap:wrap}
+  label{font-size:.9rem; color:var(--muted)}
+  input,button{font:inherit; border-radius:12px; border:1px solid #22314f; background:#0e1b30; color:var(--ink)}
+  input{padding:12px; width:100%}
+  .btn{padding:12px 16px; cursor:pointer; transition:transform .06s ease, filter .2s ease}
+  .btn:active{transform:translateY(1px)}
+  .btn.primary{background:#133a63; border-color:#16446f}
+  .btn.success{background:var(--ok); border-color:#16a34a; color:#05210f}
+  .hint{color:var(--muted); font-size:.9rem}
+  .stack{display:flex; flex-direction:column; gap:8px}
+  .actions{display:flex; justify-content:space-between; align-items:center; gap:8px}
+  .pill{background:#0f1a2d; border:1px solid #22314f; border-radius:999px; padding:6px 10px; white-space:nowrap}
+
+  .wrap{max-width:960px; margin:0 auto; padding:14px}
+  header{display:flex; gap:10px; align-items:center; justify-content:space-between}
+  h1{font-size:1.05rem; margin:0}
+  .badge{font-size:.72rem; color:#0b1320; background:var(--accent); padding:4px 8px; border-radius:999px; font-weight:700}
+  .card{background:var(--card); border:1px solid #22314f; border-radius:16px; padding:12px}
+  .btn.ghost{background:transparent}
+  table{width:100%; border-collapse:collapse}
+  th,td{padding:10px; border-bottom:1px solid #22314f; text-align:left}
+  tfoot td{font-weight:700}
+  .pricecell{white-space:nowrap}
+  .sticky-bottom{position:sticky; bottom:0; background:linear-gradient(180deg,rgba(11,19,32,0),var(--bg2) 24%); padding-top:6px}
+  .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:10px}
+  .mat-btn{display:flex; flex-direction:column; gap:6px; align-items:center; justify-content:center; background:#0e1b30; border:1px solid #22314f; border-radius:14px; padding:10px; min-height:104px; transition:transform .1s ease, box-shadow .2s ease}
+  .mat-btn:hover{transform:translateY(-2px); box-shadow:0 8px 20px rgba(0,0,0,.35)}
+  .mat-btn svg{width:40px; height:40px}
+  .mat-btn span{font-size:.8rem; text-align:center}
+  .fab{position:fixed; right:16px; bottom:16px; width:56px; height:56px; border-radius:999px; background:#1f2b45; border:1px solid #2a3e66; display:none; align-items:center; justify-content:center; box-shadow:0 8px 24px rgba(0,0,0,.35)}
+  .fab span{font-size:24px; line-height:1}
+  video{width:100%; border-radius:16px; background:#000}
+  @media (max-width:420px){ header .row{gap:6px} .btn{padding:10px 12px} .grid{grid-template-columns:repeat(3,1fr)} }
+</style>
+<!-- Barcode generator -->
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+</head>
+<body>
+
+<!-- AUTH SCREEN -->
+<div id="authScreen" aria-hidden="true">
+  <div class="auth-card">
+    <div class="title"><span class="dot"></span><h1 style="margin:0;font-size:1.6rem">Login</h1></div>
+    <p class="subtitle">Sign in to access orders & scanning.</p>
+    <div class="stack">
+      <label>Email</label>
+      <input id="authEmail" placeholder="example@gmail.com" />
+      <label>Password</label>
+      <input id="authPass" type="password" placeholder="••••" />
+      <div class="actions">
+        <span id="authHint" class="hint">Use your staff account.</span>
+        <div class="row">
+          <button id="authLogin" class="btn success">Sign in</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- APP SHELL (hidden until authenticated) -->
+<div id="appShell" style="display:none">
+  <div class="wrap">
+    <header>
+      <h1>Simply Recycle <span class="badge">AMS247-style</span></h1>
+      <div class="row" style="gap:8px;align-items:center">
+        <span id="cloudStatus" class="pill">Cloud: not connected</span>
+        <span id="staffStatus" class="pill">Staff: guest</span>
+        <button id="scanBtn" class="btn">Scan</button>
+        <button id="openPrices" class="btn">Prices</button>
+        <button id="viewOrders" class="btn">Orders</button>
+        <button id="cloudBtn" class="btn primary">Cloud</button>
+        <button id="staffBtn" class="btn">Staff</button>
+      </div>
+    </header>
+
+    <div class="row" style="margin-top:12px">
+      <!-- LEFT: ENTRY PANEL (WEIGHT DEFAULT) -->
+      <div class="card" style="flex:1;min-width:280px">
+        <div class="row" style="justify-content:space-between;align-items:center">
+          <b>Entry</b>
+          <label class="row" style="align-items:center;gap:6px"><input type="checkbox" id="cntMode"><span class="hint">CNT (Count mode)</span></label>
+        </div>
+
+        <!-- WEIGHT DEFAULT -->
+        <div id="weightBox" class="card" style="margin-top:10px">
+          <label for="pounds">Weight (lb)</label>
+          <input id="pounds" type="number" step="0.01" inputmode="decimal" min="0" value="0">
+          <div class="hint" id="weightPreview">$0.00</div>
+        </div>
+
+        <!-- COUNT (only when CNT checked) -->
+        <div id="countBox" class="card" style="margin-top:10px;display:none">
+          <label for="qty">Count (auto‑CRV)</label>
+          <input id="qty" type="number" inputmode="numeric" pattern="[0-9]*" value="0" min="0">
+          <div class="hint" id="countPreview">$0.00</div>
+        </div>
+
+        <div class="card" style="margin-top:10px">
+          <div class="row" style="align-items:center">
+            <label for="barcodeOk">Barcode verified</label>
+            <input id="barcodeOk" type="checkbox" checked style="width:22px;height:22px">
+            <span class="hint">(required to save order)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: ORDER TABLE -->
+      <div class="card" style="flex:1;min-width:280px">
+        <h3 style="margin:0 0 6px">Current Order</h3>
+        <div class="hint" id="chosenMatLabel" style="margin:4px 0 8px">Material: —</div>
+        <table id="orderTable">
+          <thead>
+            <tr><th>Item</th><th>Detail</th><th class="pricecell">Subtotal</th><th></th></tr>
+          </thead>
+          <tbody></tbody>
+          <tfoot>
+            <tr><td colspan="2">CRV total</td><td class="pricecell" id="crvTotal">$0.00</td><td></td></tr>
+            <tr><td colspan="2">Weight total</td><td class="pricecell" id="weightTotal">$0.00</td><td></td></tr>
+            <tr><td colspan="2">Grand total</td><td class="pricecell" id="grandTotal">$0.00</td><td></td></tr>
+          </tfoot>
+        </table>
+        <div class="sticky-bottom">
+          <div class="row" style="justify-content:space-between;gap:8px">
+            <button id="clearOrder" class="btn danger">Clear</button>
+            <button id="saveOrder" class="btn success">Save Order</button>
+          </div>
+          <p class="hint" id="saveHint"></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- MATERIAL PICKER AT BOTTOM -->
+    <div class="card" style="margin-top:12px">
+      <label style="display:block;margin-bottom:8px">Materials</label>
+      <div id="matGrid" class="grid"></div>
+      <!-- Choice panel replaces grid after click -->
+      <div id="choicePanel" class="row" style="gap:10px;display:none;flex-wrap:wrap"></div>
+      <div class="hint" id="pickedHint">Weight by default. Enter lbs first, then tap a material; grid hides and shows CRV (left) / Non‑CRV (right). If <b>CNT</b> is checked, enter quantity then tap material to get &lt;24 (5¢) / ≥24 (10¢). Aluminum right button = $1.75/lb.</div>
+    </div>
+  </div>
+
+  <!-- Floating pencil (back) -->
+  <button id="editFab" class="fab" aria-label="Back to materials" title="Back to materials"><span>✎</span></button>
+
+  <!-- Prices Modal -->
+  <dialog id="pricesModal" style="border:0;padding:0;border-radius:16px;background:var(--card);color:var(--ink);width:min(720px,92vw)">
+    <div class="card" style="border:0">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <h3 style="margin:0">Edit Prices ($/lb)</h3>
+        <button class="btn" onclick="pricesModal.close()">✕</button>
+      </div>
+      <div id="priceGrid" class="row" style="flex-direction:column"></div>
+      <div class="row" style="justify-content:space-between;margin-top:10px;align-items:center">
+        <span id="priceSyncState" class="pill">Cloud prices: local only</span>
+        <div>
+          <button class="btn" id="refreshPrices">Refresh</button>
+          <button class="btn primary" id="savePrices">Save</button>
+        </div>
+      </div>
+      <div class="hint">Prices sync to the cloud when connected. Phones pull the latest automatically after you tap <b>Refresh</b> (or on page load).</div>
+    </div>
+  </dialog>
+
+  <!-- Barcode Modal -->
+  <dialog id="barcodeModal" style="border:0;padding:0;border-radius:16px;background:var(--card);color:var(--ink);width:min(560px,96vw)">
+    <div class="card" style="border:0">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <h3 style="margin:0">Order Barcode</h3>
+        <div class="row">
+          <button id="shareBar" class="btn">Share</button>
+          <button id="printBar" class="btn">Print</button>
+          <button class="btn" onclick="barcodeModal.close()">✕</button>
+        </div>
+      </div>
+      <div class="center" style="width:100%">
+        <svg id="barcodeSVG" style="width:100%;max-width:520px;height:auto"></svg>
+      </div>
+      <div class="hint" id="barcodeHint" style="margin-top:8px;word-break:break-all"></div>
+    </div>
+  </dialog>
+
+  <!-- Orders Modal -->
+  <dialog id="ordersModal" style="border:0;padding:0;border-radius:16px;background:var(--card);color:var(--ink);width:min(720px,96vw)">
+    <div class="card" style="border:0">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <h3 style="margin:0">Saved Orders</h3>
+        <div class="row" style="gap:8px;align-items:center">
+          <button id="clearAllOrders" class="btn danger">Delete All (Cloud)</button>
+          <button class="btn" onclick="ordersModal.close()">✕</button>
+        </div>
+      </div>
+      <div id="ordersList"></div>
+      <div class="hint">Orders are stored in Firebase. Local storage is no longer used.</div>
+    </div>
+  </dialog>
+
+  <!-- Cloud Config Modal (still available) -->
+  <dialog id="cloudModal" style="border:0;padding:0;border-radius:16px;background:var(--card);color:var(--ink);width:min(720px,96vw)">
+    <div class="card" style="border:0">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <h3 style="margin:0">Cloud Setup (Firebase)</h3>
+        <button class="btn" onclick="cloudModal.close()">✕</button>
+      </div>
+      <p class="hint">Using pre-baked config. You can override by pasting a new one:</p>
+      <textarea id="fbCfgInput" placeholder='{"apiKey":"…","authDomain":"…","projectId":"…","appId":"…"}'></textarea>
+      <div class="row" style="justify-content:space-between;margin-top:10px">
+        <button id="disconnectCloud" class="btn danger">Disconnect</button>
+        <div>
+          <button id="testCloud" class="btn">Test</button>
+          <button id="saveCloud" class="btn success">Connect</button>
+        </div>
+      </div>
+      <div id="cloudMsg" class="hint" style="margin-top:6px"></div>
+      <div class="hint" id="adminUidMsg" style="margin-top:6px"></div>
+    </div>
+  </dialog>
+
+  <!-- Staff Login Modal (optional second place) -->
+  <dialog id="staffModal" style="border:0;padding:0;border-radius:16px;background:var(--card);color:var(--ink);width:min(520px,96vw)">
+    <div class="card" style="border:0">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <h3 style="margin:0">Staff Login</h3>
+        <button class="btn" onclick="staffModal.close()">✕</button>
+      </div>
+      <div class="row" style="flex-direction:column">
+        <label>Email</label>
+        <input id="staffEmail" placeholder="example@gmail.com" />
+        <label>Password</label>
+        <input id="staffPass" type="password" placeholder="1239" />
+      </div>
+      <div class="actions" style="margin-top:10px">
+        <span class="hint">IP auto‑login after first sign-in.</span>
+        <div>
+          <button id="logoutStaff" class="btn danger">Log out</button>
+          <button id="loginStaff" class="btn success">Log in</button>
+        </div>
+      </div>
+      <div id="staffMsg" class="hint" style="margin-top:6px"></div>
+    </div>
+  </dialog>
+</div>
+
+<!-- Prebaked Firebase config provided by you -->
+<script>
+  const prebakedCfg = {
+    apiKey: "AIzaSyCSRYYjuJyO6_N2n9RaA8T2fXRaHiC3q6o",
+    authDomain: "recycle-cb24b.firebaseapp.com",
+    projectId: "recycle-cb24b",
+    storageBucket: "recycle-cb24b.firebasestorage.app",
+    messagingSenderId: "281209650356",
+    appId: "1:281209650356:web:a3b55a3b4d7ce5e642abe1",
+    measurementId: "G-4DFFS1RH83"
+  };
+  try { localStorage.setItem('sr_fb_config', JSON.stringify(prebakedCfg)); } catch (e) {}
+  window.fbCfg = prebakedCfg;
+</script>
+
+<!-- Firebase (cloud-only, staff email/pass) -->
+<script type="module">
+  const cloudStatus = document.getElementById('cloudStatus');
+  const staffStatus = document.getElementById('staffStatus');
+  const adminUidMsg = document.getElementById('adminUidMsg');
+  const saveBtn = document.getElementById('saveOrder');
+  const viewBtn = document.getElementById('viewOrders');
+  const scanBtn = document.getElementById('scanBtn');
+  const priceSyncState = document.getElementById('priceSyncState');
+  const setStatus=(t)=>cloudStatus.textContent=t;
+
+  // Hide app until signed in
+  const appShell = document.getElementById('appShell');
+  const authScreen = document.getElementById('authScreen');
+
+  if(!window.fbCfg){
+    setStatus('Cloud: not connected');
+    saveBtn?.setAttribute('disabled','');
+    viewBtn?.setAttribute('disabled','');
+    scanBtn?.setAttribute('disabled','');
+    window.cloud=null; window.auth=null; window.db=null;
+  } else {
+    try{
+      const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js');
+      const { getFirestore, doc, setDoc, getDoc, collection, getDocs, query, orderBy, deleteDoc, enableIndexedDbPersistence } = await import('https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js');
+      const { getAuth, onAuthStateChanged, setPersistence, browserLocalPersistence, signInWithEmailAndPassword, signOut } = await import('https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js');
+      const app = initializeApp(window.fbCfg);
+      const auth = getAuth(app); await setPersistence(auth, browserLocalPersistence);
+      const db = getFirestore(app);
+      enableIndexedDbPersistence(db).catch(()=>{});
+
+      window.auth = auth; window.db = db;
+
+      onAuthStateChanged(auth, async (user)=>{
+        if(user){
+          setStatus('Cloud: connected');
+          saveBtn?.removeAttribute('disabled'); viewBtn?.removeAttribute('disabled'); scanBtn?.removeAttribute('disabled');
+          window.cloud = {
+            async saveOrder(o){ await setDoc(doc(db,'orders',o.id), o); },
+            async getOrder(id){ const s=await getDoc(doc(db,'orders',id)); return s.exists()? s.data(): null; },
+            async listOrders(){ const qy=query(collection(db,'orders'), orderBy('when','desc')); const s=await getDocs(qy); return s.docs.map(d=>d.data()); },
+            async clearAll(){ const s=await getDocs(collection(db,'orders')); await Promise.all(s.docs.map(d=>deleteDoc(d.ref))); },
+            async getPrices(){ const s=await getDoc(doc(db,'settings','prices')); return s.exists()? s.data(): null; },
+            async setPrices(map){ await setDoc(doc(db,'settings','prices'), { map, updatedAt: new Date().toISOString() }); }
+          };
+          adminUidMsg.textContent = `Signed in as ${user.email || user.uid}.`;
+          // Reveal app, hide auth
+          authScreen.style.display='none';
+          appShell.style.display='block';
+          if(window._onCloudReady) try{ await window._onCloudReady(); }catch(e){}
+        } else {
+          setStatus('Cloud: sign in required');
+          saveBtn?.setAttribute('disabled',''); viewBtn?.setAttribute('disabled',''); scanBtn?.setAttribute('disabled','');
+          window.cloud=null;
+          appShell.style.display='none';
+          authScreen.style.display='flex';
+        }
+      });
+
+      // Expose helpers for both auth screens
+      window._signInStaff = async (email,pass)=>{ await signInWithEmailAndPassword(auth,email,pass); };
+      window._signOutStaff = async ()=>{ await signOut(auth); };
+
+    }catch(err){ setStatus('Cloud: error'); console.error(err); window.cloud=null; }
+  }
+</script>
+
+<!-- App logic + UI -->
+<script>
+const $=(q)=>document.querySelector(q);
+
+/* -------- Icons (inline SVGs) -------- */
+const icons={
+  can:`<svg viewBox='0 0 64 64' fill='none'><rect x='18' y='4' width='28' height='56' rx='6' stroke='#7dd3fc' stroke-width='3'/><rect x='22' y='10' width='20' height='44' rx='3' fill='#1a2744'/></svg>`,
+  bottle:`<svg viewBox='0 0 64 64' fill='none'><path d='M28 6h8v8a8 8 0 0 1 4 7v30a8 8 0 0 1-8 8h0a8 8 0 0 1-8-8V21a8 8 0 0 1 4-7V6z' stroke='#7dd3fc' stroke-width='3' fill='#1a2744'/></svg>`,
+  jug:`<svg viewBox='0 0 64 64' fill='none'><path d='M20 14h16l8 8v28a8 8 0 0 1-8 8H24a8 8 0 0 1-8-8V22a8 8 0 0 1 4-8z' stroke='#7dd3fc' stroke-width='3' fill='#1a2744'/><rect x='36' y='18' width='10' height='8' rx='2' stroke='#7dd3fc' stroke-width='3'/></svg>`,
+  glass:`<svg viewBox='0 0 64 64' fill='none'><path d='M16 6h32l-6 40a10 10 0 0 1-10 8h0a10 10 0 0 1-10-8L16 6z' stroke='#7dd3fc' stroke-width='3' fill='#1a2744'/></svg>`,
+  steel:`<svg viewBox='0 0 64 64' fill='none'><rect x='14' y='10' width='36' height='48' rx='6' stroke='#7dd3fc' stroke-width='3'/><path d='M18 22h28M18 30h28M18 38h28' stroke='#7dd3fc' stroke-width='2'/></svg>`,
+  cup:`<svg viewBox='0 0 64 64' fill='none'><path d='M14 10h36l-6 36a10 10 0 0 1-10 8h0a10 10 0 0 1-10-8L14 10z' stroke='#7dd3fc' stroke-width='3' fill='#1a2744'/></svg>`,
+  seven:`<svg viewBox='0 0 64 64' fill='none'><polygon points='8,12 56,12 28,56 12,56' stroke='#7dd3fc' stroke-width='3' fill='none'/><text x='28' y='40' fill='#7dd3fc' font-size='24' text-anchor='middle' font-family='monospace'>7</text></svg>`,
+  pouch:`<svg viewBox='0 0 64 64' fill='none'><path d='M20 10h24l6 10v28l-6 6H20l-6-6V20l6-10z' stroke='#7dd3fc' stroke-width='3' fill='#1a2744'/></svg>`,
+  baginbox:`<svg viewBox='0 0 64 64' fill='none'><rect x='10' y='12' width='44' height='40' rx='6' stroke='#7dd3fc' stroke-width='3' fill='none'/><circle cx='46' cy='44' r='6' stroke='#7dd3fc' stroke-width='3'/><path d='M44 44h4' stroke='#7dd3fc' stroke-width='3'/></svg>`,
+  carton:`<svg viewBox='0 0 64 64' fill='none'><path d='M22 12h20l6 10v28a6 6 0 0 1-6 6H22a6 6 0 0 1-6-6V22l6-10z' stroke='#7dd3fc' stroke-width='3' fill='#1a2744'/><path d='M42 12l6 10H22' stroke='#7dd3fc' stroke-width='2'/><path d='M44 18c6 2 8 2 10 2' stroke='#7dd3fc' stroke-width='2'/></svg>`
+};
+
+const materials={
+  ALUMINUM:{label:'Aluminum',unit:'lb',icon:icons.can},
+  GLASS:{label:'Glass',unit:'lb',icon:icons.glass},
+  PET1:{label:'#1 PET',unit:'lb',icon:icons.bottle},
+  HDPE2:{label:'#2 HDPE',unit:'lb',icon:icons.jug},
+  PVC3:{label:'#3 PVC',unit:'lb',icon:icons.bottle},
+  LDPE4:{label:'#4 LDPE',unit:'lb',icon:icons.bottle},
+  PP5:{label:'#5 PP',unit:'lb',icon:icons.cup},
+  PS6:{label:'#6 PS',unit:'lb',icon:icons.cup},
+  OTHER7:{label:'#7 Other Plastic',unit:'lb',icon:icons.seven},
+  BIMETAL:{label:'Bi‑metal',unit:'lb',icon:icons.steel},
+  Pouch:{label:'Multi‑Layer Pouch',unit:'lb',icon:icons.pouch},
+  BagInBox:{label:'Bag‑in‑Box (wine)',unit:'lb',icon:icons.baginbox},
+  JuiceBox:{label:'Paperboard Carton (BeatBox)',unit:'ea',icon:icons.carton}
+};
+
+let prices=JSON.parse(localStorage.getItem('sr_prices')||'null')||{ALUMINUM:1.65,GLASS:0.102,PET1:1.47,HDPE2:0.63,PVC3:0.48,LDPE4:0.98,PP5:0.55,PS6:0.31,OTHER7:0.41,BIMETAL:0.825,Pouch:0.41,BagInBox:3.79,JuiceBox_each:0.25};
+let selectedMat=null;const order=[];
+function format(n){return(isNaN(n)?0:n).toLocaleString(undefined,{style:'currency',currency:'USD'})}
+
+/* Build material grid with icons */
+(function(){const g=$('#matGrid');Object.entries(materials).forEach(([k,v])=>{const b=document.createElement('button');b.className='mat-btn';b.innerHTML=`${v.icon}<span>${v.label}</span>`;b.onclick=()=>onMaterial(k);g.appendChild(b);});})();
+
+function isCount(){return $('#cntMode').checked}
+function updatePanels(){ $('#countBox').style.display=isCount()?'block':'none'; $('#weightBox').style.display=isCount()?'none':'block'; }
+$('#cntMode').addEventListener('change',()=>{updatePanels(); restoreGrid();});
+updatePanels();
+
+function onMaterial(key){
+  selectedMat=key; $('#chosenMatLabel').textContent='Material: '+materials[key].label;
+  const p=$('#choicePanel'); p.innerHTML='';
+  if(isCount()){
+    const qty=+$('#qty').value||0; if(!qty){ flashHint('Enter count first'); return; }
+    $('#matGrid').style.display='none'; p.style.display='flex'; $('#editFab').style.display='flex';
+    p.append(mkBtn('< 24 oz (5¢)',()=>{addCountItem(0.05);restoreGrid();}), mkBtn('≥ 24 oz (10¢)',()=>{addCountItem(0.10);restoreGrid();}));
+  }else{
+    const lbs=+$('#pounds').value||0; if(!lbs){ flashHint('Enter weight first'); return; }
+    $('#matGrid').style.display='none'; p.style.display='flex'; $('#editFab').style.display='flex';
+    p.append(mkBtn('CRV',()=>{addWeightItem('CRV');restoreGrid();}), mkBtn(key==='ALUMINUM'?'$1.75/lb':'Non‑CRV',()=>{addWeightItem(key==='ALUMINUM'?'ALU175':'NON');restoreGrid();}));
+  }
+}
+function mkBtn(txt,fn){const b=document.createElement('button');b.className='btn primary';b.textContent=txt;b.onclick=fn;return b}
+function restoreGrid(){ $('#choicePanel').style.display='none'; $('#matGrid').style.display='grid'; $('#chosenMatLabel').textContent='Material: —'; selectedMat=null; $('#editFab').style.display='none'; }
+function flashHint(msg){const el=$('#pickedHint'); const prev=el.textContent; el.textContent=msg; setTimeout(()=>el.textContent=prev,1200)}
+
+/* previews */
+function previewWeight(){const lbs=+$('#pounds').value||0; $('#weightPreview').textContent=format(lbs*(prices[selectedMat]||0));}
+function previewCount(){const qty=+$('#qty').value||0; const per=0.05; $('#countPreview').textContent=format(qty*per);} // min
+$('#pounds').addEventListener('input',previewWeight); $('#qty').addEventListener('input',previewCount);
+
+/* Add items */
+function addWeightItem(kind){ if(!selectedMat){alert('Pick a material below.');return;} const lbs=+$('#pounds').value||0; if(!lbs)return; let rate=(prices[selectedMat]||0); let tag=(kind==='CRV')?'CRV':'Non‑CRV'; if(selectedMat==='ALUMINUM'&&kind==='ALU175'){rate=1.75;tag='Alu $1.75'} order.push({type:'weight',mat:selectedMat,lbs,unitPrice:rate,subtotal:lbs*rate,detail:`${tag} · ${lbs.toFixed(2)} lb × ${format(rate)}/lb`}); $('#pounds').value=0; render(); }
+function addCountItem(per){ if(!selectedMat){alert('Pick a material below.');return;} const qty=+$('#qty').value||0; if(!qty)return; order.push({type:'crv',mat:selectedMat,qty,unitPrice:per,subtotal:qty*per,detail:`${qty} × ${(per===0.10?'10¢':'5¢')}`}); $('#qty').value=0; render(); }
+
+function render(){const tb=$('#orderTable tbody');tb.innerHTML='';let crv=0,wt=0;order.forEach((it,i)=>{const tr=document.createElement('tr');tr.innerHTML=`<td>${materials[it.mat].label}</td><td>${it.detail}</td><td class=\"pricecell\">${format(it.subtotal)}</td><td><button class='btn' data-i='${i}'>✕</button></td>`;tb.appendChild(tr);if(it.type==='weight')wt+=it.subtotal;else crv+=it.subtotal;});$('#crvTotal').textContent=format(crv);$('#weightTotal').textContent=format(wt);$('#grandTotal').textContent=format(crv+wt);tb.querySelectorAll('button[data-i]').forEach(b=>b.onclick=()=>{order.splice(+b.dataset.i,1);render()});}
+
+$('#clearOrder').onclick=()=>{order.splice(0,order.length);render()}
+$('#saveOrder').onclick=async()=>{
+  const ok=$('#barcodeOk').checked; if(!ok){$('#saveHint').textContent='Barcode must be verified (checked) to save.';return;}
+  if(!order.length){$('#saveHint').textContent='Add some items first.';return;}
+  if(!window.cloud||!window.cloud.saveOrder){$('#saveHint').textContent='Connect Cloud + Sign in (top right).';return;}
+  const payload={id:'SR-'+Date.now(),when:new Date().toISOString(),barcodeVerified:ok,items:[...order],totals:{crv:$('#crvTotal').textContent,weight:$('#weightTotal').textContent,grand:$('#grandTotal').textContent}};
+  try{ await window.cloud.saveOrder(payload); }catch(e){ $('#saveHint').textContent='Cloud save failed'; return; }
+  order.splice(0,order.length); render(); $('#saveHint').textContent='Saved to cloud ✔'; setTimeout(()=>$('#saveHint').textContent='',1500)
+}
+
+/* Prices modal (local + cloud sync) */
+$('#openPrices').onclick=()=>{buildPricesForm();pricesModal.showModal();}
+function buildPricesForm(){const grid=$('#priceGrid');grid.innerHTML='';Object.keys(materials).forEach(k=>{if(materials[k].unit==='ea')return;const row=document.createElement('div');row.className='row';row.style.flexDirection='column';row.innerHTML=`<label>${materials[k].label}</label><input type='number' step='0.001' id='p_${k}' value='${prices[k]??''}' placeholder='$/lb'>`;grid.appendChild(row);});const jb=document.createElement('div');jb.className='row';jb.style.flexDirection='column';jb.innerHTML=`<label>Paperboard Carton (BeatBox) – price each</label><input type='number' step='0.01' id='p_JuiceBox_each' value='${prices.JuiceBox_each??0.25}' placeholder='$/ea'>`;grid.appendChild(jb);updatePriceSyncState();}
+function updatePriceSyncState(){ if(window.cloud&&window.cloud.getPrices){ priceSyncState.textContent='Cloud prices: connected'; } else { priceSyncState.textContent='Cloud prices: local only'; } }
+$('#refreshPrices').onclick=async()=>{ if(window.cloud&&window.cloud.getPrices){ const doc=await window.cloud.getPrices(); if(doc&&doc.map){ prices={...prices,...doc.map}; localStorage.setItem('sr_prices',JSON.stringify(prices)); buildPricesForm(); } } };
+$('#savePrices').onclick=async()=>{const next={};Object.keys(materials).forEach(k=>{if(materials[k].unit==='lb'){next[k]=+(($('#p_'+k)||{}).value||0)||0}});next.JuiceBox_each=+(($('#p_JuiceBox_each')||{}).value||0.25)||0.25;prices={...prices,...next};localStorage.setItem('sr_prices',JSON.stringify(prices)); if(window.cloud&&window.cloud.setPrices){ try{ await window.cloud.setPrices(prices); }catch(e){} } pricesModal.close();}
+
+/* Orders modal (cloud only) */
+$('#viewOrders').onclick=async()=>{
+  const list=$('#ordersList'); list.innerHTML='';
+  if(!window.cloud||!window.cloud.listOrders){ list.innerHTML='<div class="hint">Connect Cloud + Sign in to view orders.</div>'; ordersModal.showModal(); return; }
+  const all = await window.cloud.listOrders();
+  if(!all.length){ list.innerHTML = '<div class="hint">No orders yet.</div>'; ordersModal.showModal(); return; }
+  all.forEach(o=>{
+    const div=document.createElement('div'); div.className='card';
+    const header=document.createElement('div'); header.className='row'; header.style.justifyContent='space-between'; header.style.alignItems='center';
+    const left=document.createElement('b'); left.textContent=o.id;
+    const btn=document.createElement('button'); btn.className='btn primary'; btn.textContent='Barcode'; btn.onclick=()=>showBarcode(o.id);
+    const right=document.createElement('span'); right.className='hint'; right.textContent = new Date(o.when).toLocaleString()+` · Barcode: ${o.barcodeVerified?'✔':'✕'}`;
+    header.append(left, btn, right);
+    const ul=document.createElement('ul'); ul.innerHTML = (o.items||[]).map(it=>`<li>${(materials[it.mat]||{label:it.mat}).label} — ${it.detail} <b>${format(it.subtotal)}</b></li>`).join('');
+    const totals=document.createElement('div'); totals.className='row'; totals.style.justifyContent='flex-end'; totals.style.gap='16px';
+    totals.innerHTML = `<span>CRV: <b>${o.totals?.crv||'$0.00'}</b></span><span>Weight: <b>${o.totals?.weight||'$0.00'}</b></span><span>Grand: <b>${o.totals?.grand||'$0.00'}</b></span>`;
+    div.append(header, ul, totals); list.appendChild(div);
+  });
+  ordersModal.showModal();
+}
+$('#clearAllOrders').onclick=async()=>{ const isStaff=(localStorage.getItem('sr_staff_email')||'')!==''; if(!isStaff){ alert('Only staff can clear cloud orders.'); return;} if(confirm('Delete ALL orders from cloud?')){ try{ await window.cloud.clearAll(); $('#ordersList').innerHTML='<div class="hint">Cloud cleared.</div>'; }catch(e){ alert('Failed to clear'); } } }
+
+function showBarcode(text){
+  try{
+    JsBarcode('#barcodeSVG', text, {format:'CODE128', lineColor:'#e5efff', background:'#111a2b', width:2, height:120, margin:10, displayValue:true, fontSize:18});
+    $('#barcodeHint').textContent = text;
+    barcodeModal.showModal();
+  }catch(e){ alert('Barcode render error: '+e.message); }
+}
+/* Share / Print barcode */
+function svgToDataURL(){ const svg=$('#barcodeSVG'); const s=new XMLSerializer().serializeToString(svg); return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(s); }
+$('#shareBar').onclick=async()=>{
+  const dataUrl=svgToDataURL();
+  try{
+    if(navigator.share && navigator.canShare){ const r=await fetch(dataUrl); const blob=await r.blob(); const file=new File([blob],'barcode.svg',{type:'image/svg+xml'}); if(navigator.canShare({files:[file]})){ await navigator.share({files:[file], title:'Order Barcode'}); return; } }
+    window.open(dataUrl,'_blank');
+  }catch(e){ window.open(dataUrl,'_blank'); }
+};
+$('#printBar').onclick=()=>{ const w=window.open('','print'); const html=`<html><head><title>Barcode</title></head><body style='margin:0;padding:20px'>${$('#barcodeSVG').outerHTML}<script>window.onload=()=>{window.print();setTimeout(()=>window.close(),300);}</`+`script></body></html>`; w.document.write(html); w.document.close(); };
+
+/* Cloud config modal (optional override) */
+$('#cloudBtn').onclick=()=>{ const box=$('#fbCfgInput'); try{ box.value = JSON.stringify(JSON.parse(localStorage.getItem('sr_fb_config')||'{}'), null, 2); }catch(e){ box.value=''; } cloudModal.showModal(); };
+$('#disconnectCloud').onclick=()=>{ localStorage.removeItem('sr_fb_config'); $('#cloudMsg').textContent='Disconnected. Reloading…'; setTimeout(()=>location.reload(),400); };
+$('#saveCloud').onclick=()=>{ try{ const cfg=JSON.parse($('#fbCfgInput').value); localStorage.setItem('sr_fb_config', JSON.stringify(cfg)); $('#cloudMsg').textContent='Saved. Reloading…'; setTimeout(()=>location.reload(),400); }catch(e){ $('#cloudMsg').textContent='Invalid JSON'; } };
+$('#testCloud').onclick=()=>{ try{ const cfg=JSON.parse($('#fbCfgInput').value); $('#cloudMsg').textContent='Looks valid. Tap Connect to save.'; }catch(e){ $('#cloudMsg').textContent='Invalid JSON'; } };
+
+/* Staff login (email/password) + IP memo (display only) */
+const staffStatusEl=$('#staffStatus');
+function setStaffUI(email){ staffStatusEl.textContent = email? `Staff: ${email}` : 'Staff: guest'; }
+async function getIP(){ try{ const r=await fetch('https://api.ipify.org?format=json'); const j=await r.json(); return j.ip; }catch(e){ return null; } }
+$('#staffBtn').onclick=()=>{ const e=localStorage.getItem('sr_staff_email')||'example@gmail.com'; $('#staffEmail').value=e; $('#staffPass').value=''; staffModal.showModal(); };
+$('#loginStaff').onclick=async()=>{ const e=$('#staffEmail').value.trim(); const p=$('#staffPass').value.trim(); if(!e||!p){ $('#staffMsg').textContent='Enter email and password'; return; } try{ if(window._signInStaff) await window._signInStaff(e,p); const ip=await getIP(); localStorage.setItem('sr_staff_email',e); if(ip) localStorage.setItem('sr_staff_ip',ip); setStaffUI(e); $('#staffMsg').textContent='Logged in.'; setTimeout(()=>staffModal.close(),300);}catch(err){ $('#staffMsg').textContent='Login failed'; } };
+$('#logoutStaff').onclick=async()=>{ try{ if(window._signOutStaff) await window._signOutStaff(); }catch(e){} localStorage.removeItem('sr_staff_email'); localStorage.removeItem('sr_staff_ip'); setStaffUI(null); $('#staffMsg').textContent='Logged out.'; };
+(async()=>{ const ip=await getIP(); const lastIP=localStorage.getItem('sr_staff_ip'); const e=localStorage.getItem('sr_staff_email'); if(ip && lastIP && e && ip===lastIP){ setStaffUI(e); } })();
+
+/* Scanner modal (cloud only) */
+const hasDetector = 'BarcodeDetector' in window;
+$('#scanBtn').onclick=()=>{ $('#apiState').textContent = 'API: '+(hasDetector?'supported ✔':'not supported ✖'); $('#scanResult').textContent='Point camera at barcode.'; $('#scanOrder').style.display='none'; scanModal.showModal(); };
+let stream=null, raf=null, detector=null;
+async function startScan(){ try{ stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}}); $('#camState').textContent='Camera: on ✔'; const v=$('#video'); v.srcObject=stream; await v.play(); if(hasDetector){ detector = new BarcodeDetector({formats:['code_128','code_39','ean_13','upc_a','qr_code']}); loopScan(); }else{ $('#scanResult').textContent='This browser does not support BarcodeDetector.'; } }catch(e){ $('#camState').textContent='Camera: error'; alert(e.message); } }
+function stopScan(){ try{ if(raf) cancelAnimationFrame(raf); if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; } $('#camState').textContent='Camera: idle'; }catch(e){} }
+$('#startCam').onclick=()=>{ if(stream){ stopScan(); } else { startScan(); } };
+async function loopScan(){ const v=$('#video'); const tick = async()=>{ try{ const codes=await detector.detect(v); if(codes && codes.length){ const val=codes[0].rawValue||codes[0].displayValue||''; await onScan(val); return; } }catch(e){} raf=requestAnimationFrame(tick); }; tick(); }
+async function onScan(val){ if(!val) return; stopScan(); $('#scanResult').innerHTML='<b>Scanned:</b> '+val; let o=null; if(window.cloud && window.cloud.getOrder){ try{ o = await window.cloud.getOrder(val); }catch(e){} } if(o){ const rows=(o.items||[]).map(it=>`<li>${(materials[it.mat]||{label:it.mat}).label} — ${it.detail} <b>${format(it.subtotal)}</b></li>`).join(''); $('#scanOrder').style.display='block'; $('#scanOrder').innerHTML=`<h3 style='margin:10px 0'>${o.id}</h3><div class='hint'>${new Date(o.when).toLocaleString()} · Barcode: ${o.barcodeVerified?'✔':'✕'}</div><ul>${rows}</ul><div class='row' style='justify-content:flex-end;gap:16px'><span>CRV: <b>${o.totals?.crv||'$0.00'}</b></span><span>Weight: <b>${o.totals?.weight||'$0.00'}</b></span><span>Grand: <b>${o.totals?.grand||'$0.00'}</b></span></div><div class='row' style='justify-content:center;margin-top:10px'><button class='btn' onclick='(${startScan.toString()})();'>Scan Again</button></div>`; } else { $('#scanOrder').style.display='block'; $('#scanOrder').innerHTML = "<div class='hint'>No match found in cloud.</div>"; }
+}
+
+/* Pull prices from cloud once when signed in */
+window._onCloudReady = async ()=>{ try{ if(window.cloud&&window.cloud.getPrices){ const p=await window.cloud.getPrices(); if(p&&p.map){ prices={...prices,...p.map}; localStorage.setItem('sr_prices',JSON.stringify(prices)); } } }catch(e){} };
+
+/* FAB back action */
+$('#editFab').addEventListener('click',restoreGrid);
+
+/* Auth screen sign-in */
+document.getElementById('authLogin').addEventListener('click', async ()=>{
+  const email = document.getElementById('authEmail').value.trim();
+  const pass  = document.getElementById('authPass').value.trim();
+  const hint  = document.getElementById('authHint');
+  try{
+    if(!email || !pass){ hint.textContent = 'Enter email and password'; return; }
+    if(window._signInStaff) await window._signInStaff(email, pass);
+    hint.textContent = 'Signed in. Loading…';
+  }catch(e){
+    hint.textContent = 'Login failed. Check email/password.';
+  }
+});
+
+</script>
+</body>
+</html>
