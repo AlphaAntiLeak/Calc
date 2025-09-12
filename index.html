@@ -85,7 +85,7 @@
       <div class="actions">
         <span id="authHint" class="hint">Use your staff account.</span>
         <div class="row">
-          <button id="authLogin" class="btn success">Sign in</button>
+          <button id="authLogin" class="btn success" disabled>Sign in</button>
         </div>
       </div>
     </div>
@@ -352,6 +352,13 @@
       // Expose helpers for both auth screens
       window._signInStaff = async (email,pass)=>{ await signInWithEmailAndPassword(auth,email,pass); };
       window._signOutStaff = async ()=>{ await signOut(auth); };
+      // Notify UI that auth is ready
+      try{
+        const btn = document.getElementById('authLogin');
+        if(btn) btn.disabled = false;
+        const hint = document.getElementById('authHint');
+        if(hint) hint.textContent = 'Enter your staff email and password.';
+      }catch(_e){}
 
     }catch(err){ setStatus('Cloud: error'); console.error(err); window.cloud=null; }
   }
@@ -525,12 +532,27 @@ document.getElementById('authLogin').addEventListener('click', async ()=>{
   const email = document.getElementById('authEmail').value.trim();
   const pass  = document.getElementById('authPass').value.trim();
   const hint  = document.getElementById('authHint');
+  const btn   = document.getElementById('authLogin');
+  const errMap = (code)=>({
+    'auth/invalid-email': 'Invalid email address.',
+    'auth/user-not-found': 'No user with that email.',
+    'auth/wrong-password': 'Wrong password.',
+    'auth/invalid-credential': 'Invalid credentials.',
+    'auth/network-request-failed': 'Network error. Check your connection.',
+  }[code] || 'Login failed.');
+
+  if(!email || !pass){ hint.textContent = 'Enter email and password'; return; }
+  if(!window._signInStaff){ hint.textContent = 'Cloud still loading… try again in a second.'; return; }
+
   try{
-    if(!email || !pass){ hint.textContent = 'Enter email and password'; return; }
-    if(window._signInStaff) await window._signInStaff(email, pass);
+    btn.disabled = true;
+    await window._signInStaff(email, pass);
     hint.textContent = 'Signed in. Loading…';
   }catch(e){
-    hint.textContent = 'Login failed. Check email/password.';
+    const code = (e && e.code) ? e.code : '';
+    hint.textContent = errMap(code);
+  } finally {
+    btn.disabled = false;
   }
 });
 
