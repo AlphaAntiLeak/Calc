@@ -2,53 +2,78 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Login</title>
 <style>
   :root{
     --bg:#070c16; --bg2:#0b1320; --card:#0f1730; --muted:#8ca0c3;
     --accent:#7dd3fc; --ok:#22c55e; --danger:#ef4444; --ink:#e5efff
   }
+  [data-theme="light"]{
+    --bg:#f7fafc; --bg2:#eef2f7; --card:#ffffff; --muted:#5b6b83;
+    --accent:#0ea5e9; --ok:#16a34a; --danger:#dc2626; --ink:#0b1320;
+  }
   *{box-sizing:border-box}
   html,body{height:100%}
-  body{margin:0;background:radial-gradient(80vw 80vh at 10% 10%, #0f1f3d 0%, #070c16 60%), linear-gradient(180deg, #0b1320, #070c16 60%);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",sans-serif}
+  body{
+    margin:0;color:var(--ink);
+    background:radial-gradient(80vw 80vh at 10% 10%, #0f1f3d 0%, var(--bg) 60%),
+               linear-gradient(180deg, var(--bg2), var(--bg) 60%);
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",sans-serif;
+    padding-bottom:env(safe-area-inset-bottom);
+  }
   .hidden{display:none!important}
   .row{display:flex; gap:10px; flex-wrap:wrap}
-  .pill{background:#0f1a2d; border:1px solid #22314f; border-radius:999px; padding:6px 10px; white-space:nowrap}
-  .btn{padding:12px 16px; cursor:pointer; transition:transform .06s ease, filter .2s ease; font:inherit; border-radius:12px; border:1px solid #22314f; background:#0e1b30; color:var(--ink)}
+  .pill{background:color-mix(in oklab, var(--card) 70%, #0f1a2d); border:1px solid #22314f33; border-radius:999px; padding:6px 10px; white-space:nowrap}
+  .btn{padding:12px 16px; cursor:pointer; transition:transform .06s ease, filter .2s ease; font:inherit; border-radius:12px; border:1px solid #22314f33; background:color-mix(in oklab, var(--card) 80%, #0e1b30 30%); color:var(--ink)}
   .btn:active{transform:translateY(1px)}
-  .btn.primary{background:#133a63; border-color:#16446f}
+  .btn.primary{background:color-mix(in oklab, var(--accent) 20%, var(--card)); border-color:#16446f33}
   .btn.success{background:var(--ok); border-color:#16a34a; color:#05210f}
   .btn.danger{background:var(--danger); border-color:#b91c1c}
   .btn[disabled]{opacity:.6; cursor:not-allowed}
-  input,textarea{font:inherit; border-radius:12px; border:1px solid #22314f; background:#0e1b30; color:var(--ink); padding:12px}
+  input,textarea{font:inherit; border-radius:12px; border:1px solid #22314f33; background:color-mix(in oklab, var(--card) 90%, #0e1b30 20%); color:var(--ink); padding:12px}
   input[type=number]{text-align:center}
   /* --- Auth Screen --- */
-  #authScreen{position:fixed; inset:0; display:flex; align-items:center; justify-content:center; padding:24px; background:radial-gradient(60vw 60vh at 20% 10%, #112346 0%, #070c16 60%); overflow:auto;}
-  .auth-card{ width:min(520px, 96vw); background:rgba(17,26,43,.82); backdrop-filter: blur(10px); border:1px solid #22314f; border-radius:18px; padding:18px; box-shadow:0 20px 80px rgba(0,0,0,.45)}
+  #authScreen{position:fixed; inset:0; display:flex; align-items:center; justify-content:center; padding:24px; background:radial-gradient(60vw 60vh at 20% 10%, #11234622 0%, var(--bg) 60%); overflow:auto;}
+  .auth-card{ width:min(520px, 96vw); background:color-mix(in oklab, var(--card) 70%, #111a2b22); backdrop-filter: blur(10px); border:1px solid #22314f33; border-radius:18px; padding:18px; box-shadow:0 20px 80px rgba(0,0,0,.20)}
   .title{display:flex; align-items:center; gap:10px; margin:0 0 8px}
-  .title .dot{width:12px; height:12px; border-radius:999px; background:var(--accent); box-shadow:0 0 16px #7dd3fc}
+  .title .dot{width:12px; height:12px; border-radius:999px; background:var(--accent); box-shadow:0 0 16px color-mix(in oklab, var(--accent) 60%, white)}
   .subtitle{color:var(--muted); margin:0 0 12px}
   .hint{color:var(--muted); font-size:.9rem; min-height:1.2em}
   /* App shell */
   .wrap{max-width:960px; margin:0 auto; padding:14px}
   header{display:flex; gap:10px; align-items:center; justify-content:space-between}
-  .badge{font-size:.72rem; color:#0b1320; background:var(--accent); padding:4px 8px; border-radius:999px; font-weight:700}
-  .card{background:#0f1730; border:1px solid #22314f; border-radius:16px; padding:12px}
+  .badge{font-size:.72rem; color:var(--bg2); background:var(--accent); padding:4px 8px; border-radius:999px; font-weight:700}
+  .card{background:var(--card); border:1px solid #22314f33; border-radius:16px; padding:12px}
   table{width:100%; border-collapse:collapse}
-  th,td{padding:10px; border-bottom:1px solid #22314f; text-align:left}
+  th,td{padding:10px; border-bottom:1px solid #22314f33; text-align:left}
   .pricecell{white-space:nowrap}
-  .sticky-bottom{position:sticky; bottom:0; background:linear-gradient(180deg,rgba(11,19,32,0),var(--bg2) 24%); padding-top:6px}
+  .sticky-bottom{position:sticky; bottom:0; background:linear-gradient(180deg,transparent,var(--bg2) 24%); padding-top:6px}
   .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:10px}
-  .mat-btn{display:flex; flex-direction:column; gap:6px; align-items:center; justify-content:center; background:#0e1b30; border:1px solid #22314f; border-radius:14px; padding:10px; min-height:104px; transition:transform .08s ease, box-shadow .2s ease}
-  .mat-btn:hover{transform:translateY(-2px); box-shadow:0 8px 20px rgba(0,0,0,.35)}
+  .mat-btn{display:flex; flex-direction:column; gap:6px; align-items:center; justify-content:center; background:color-mix(in oklab, var(--card) 90%, #0e1b3020); border:1px solid #22314f33; border-radius:14px; padding:10px; min-height:104px; transition:transform .08s ease, box-shadow .2s ease}
+  .mat-btn:hover{transform:translateY(-2px); box-shadow:0 8px 20px rgba(0,0,0,.15)}
   .mat-btn svg{width:40px; height:40px}
   .mat-btn span{font-size:.8rem; text-align:center}
-  .fab{position:fixed; right:16px; bottom:16px; width:56px; height:56px; border-radius:999px; background:#1f2b45; border:1px solid #2a3e66; display:none; align-items:center; justify-content:center; box-shadow:0 8px 24px rgba(0,0,0,.35)}
+  .fab{position:fixed; right:16px; bottom:16px; width:56px; height:56px; border-radius:999px; background:color-mix(in oklab, var(--card) 80%, #1f2b45); border:1px solid #2a3e6633; display:none; align-items:center; justify-content:center; box-shadow:0 8px 24px rgba(0,0,0,.20)}
   video{width:100%; border-radius:16px; background:#000}
   @media (max-width:420px){ header .row{gap:6px} .btn{padding:10px 12px} .grid{grid-template-columns:repeat(3,1fr)} }
+
+  /* iPhone 15 Pro Max specific tuning (portrait & landscape) */
+  @supports (-webkit-touch-callout: none) {
+    @media screen and (device-width:430px) and (device-height:932px) and (-webkit-device-pixel-ratio:3) {
+      .wrap{padding:12px}
+      .btn{padding:14px 16px}
+      .grid{grid-template-columns:repeat(4,1fr)}
+      .mat-btn{min-height:112px}
+      header .row{gap:6px}
+      body{padding-bottom:calc(env(safe-area-inset-bottom) + 8px)}
+    }
+  }
 </style>
+<!-- Code128 (fallback) -->
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+<!-- QR (primary for iOS reliability) -->
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 </head>
 <body>
 
@@ -68,7 +93,7 @@
       </div>
       <div class="row" style="justify-content:space-between; align-items:center">
         <span id="cloudState" class="pill">Cloud: starting…</span>
-        <button id="apiBtn" class="btn">API</button>
+        <button id="apiBtn" class="btn" style="display:none">API</button>
       </div>
     </div>
   </div>
@@ -85,6 +110,7 @@
         <button id="scanBtn" class="btn">Scan</button>
         <button id="openPrices" class="btn">Prices</button>
         <button id="viewOrders" class="btn">Orders</button>
+        <button id="themeBtn" class="btn" title="Toggle theme">☀︎/🌙</button>
         <button id="logoutBtn" class="btn">Logout</button>
       </div>
     </header>
@@ -104,16 +130,16 @@
         </div>
 
         <div id="countBox" class="card" style="margin-top:10px;display:none">
-          <label for="qty">Count (auto-CRV)</label>
+          <label for="qty">Count (auto-CRV / special)</label>
           <input id="qty" type="number" inputmode="numeric" pattern="[0-9]*" value="0" min="0">
           <div class="hint" id="countPreview">$0.00</div>
         </div>
 
-        <div class="card" style="margin-top:10px">
+        <!-- Hidden but checked -->
+        <div class="card" style="margin-top:10px; display:none">
           <div class="row" style="align-items:center">
             <label for="barcodeOk">Barcode verified</label>
             <input id="barcodeOk" type="checkbox" checked style="width:22px;height:22px">
-            <span class="hint">(required to save order)</span>
           </div>
         </div>
       </div>
@@ -126,7 +152,7 @@
           <thead>
             <tr><th>Item</th><th>Detail</th><th class="pricecell">Subtotal</th><th></th></tr>
           </thead>
-            <tbody></tbody>
+          <tbody></tbody>
           <tfoot>
             <tr><td colspan="2">CRV total</td><td class="pricecell" id="crvTotal">$0.00</td><td></td></tr>
             <tr><td colspan="2">Weight total</td><td class="pricecell" id="weightTotal">$0.00</td><td></td></tr>
@@ -151,7 +177,7 @@
       <label style="display:block;margin-bottom:8px">Materials</label>
       <div id="matGrid" class="grid"></div>
       <div id="choicePanel" class="row" style="gap:10px;display:none;flex-wrap:wrap"></div>
-      <div class="hint" id="pickedHint">Weight by default. Enter lbs first, then tap a material; grid hides and shows CRV (left) / Non-CRV (right). If <b>CNT</b> is checked, enter quantity then tap material to get &lt;24 (5¢) / ≥24 (10¢). Aluminum right button = $1.75/lb.</div>
+      <div class="hint" id="pickedHint">Weight by default. Enter lbs first, then tap a material; grid hides and shows CRV (left) / Non-CRV (right). If <b>CNT</b> is checked, enter quantity then tap material to get &lt;24 (5¢) / ≥24 (10¢). <b>Bag-in-Box, Pouch, Carton = 25¢ each</b>. Aluminum right button = $1.75/lb.</div>
     </div>
   </div>
 
@@ -159,7 +185,7 @@
   <button id="editFab" class="fab" aria-label="Back to materials" title="Back to materials"><span>✎</span></button>
 
   <!-- Prices Modal -->
-  <dialog id="pricesModal" style="border:0;padding:0;border-radius:16px;background:#0f1730;color:var(--ink);width:min(720px,92vw)">
+  <dialog id="pricesModal" style="border:0;padding:0;border-radius:16px;background:var(--card);color:var(--ink);width:min(720px,92vw)">
     <div class="card" style="border:0">
       <div class="row" style="justify-content:space-between;align-items:center">
         <h3 style="margin:0">Edit Prices ($/lb)</h3>
@@ -177,10 +203,10 @@
   </dialog>
 
   <!-- Barcode Modal -->
-  <dialog id="barcodeModal" style="border:0;padding:0;border-radius:16px;background:#0f1730;color:var(--ink);width:min(560px,96vw)">
+  <dialog id="barcodeModal" style="border:0;padding:0;border-radius:16px;background:var(--card);color:var(--ink);width:min(560px,96vw)">
     <div class="card" style="border:0">
       <div class="row" style="justify-content:space-between;align-items:center">
-        <h3 style="margin:0">Order Barcode</h3>
+        <h3 style="margin:0">Order Code</h3>
         <div class="row">
           <button id="shareBar" class="btn">Share</button>
           <button id="printBar" class="btn">Print</button>
@@ -188,14 +214,15 @@
         </div>
       </div>
       <div class="center" style="width:100%">
-        <svg id="barcodeSVG" style="width:100%;max-width:520px;height:auto"></svg>
+        <canvas id="qrCanvas" style="width:100%;max-width:320px;height:auto"></canvas>
+        <svg id="barcodeSVG" style="width:100%;max-width:520px;height:auto;display:none"></svg>
       </div>
       <div class="hint" id="barcodeHint" style="margin-top:8px;word-break:break-all"></div>
     </div>
   </dialog>
 
   <!-- Orders Modal -->
-  <dialog id="ordersModal" style="border:0;padding:0;border-radius:16px;background:#0f1730;color:var(--ink);width:min(720px,96vw)">
+  <dialog id="ordersModal" style="border:0;padding:0;border-radius:16px;background:var(--card);color:var(--ink);width:min(720px,96vw)">
     <div class="card" style="border:0">
       <div class="row" style="justify-content:space-between;align-items:center">
         <h3 style="margin:0">Saved Orders</h3>
@@ -208,10 +235,10 @@
   </dialog>
 
   <!-- Scanner Modal -->
-  <dialog id="scanModal" style="border:0;padding:0;border-radius:16px;background:#0f1730;color:var(--ink);width:min(720px,96vw)">
+  <dialog id="scanModal" style="border:0;padding:0;border-radius:16px;background:var(--card);color:var(--ink);width:min(720px,96vw)">
     <div class="card" style="border:0">
       <div class="row" style="justify-content:space-between;align-items:center">
-        <h3 style="margin:0">Scan Barcode</h3>
+        <h3 style="margin:0">Scan Code</h3>
         <button class="btn" onclick="stopScan();scanModal.close()">✕</button>
       </div>
       <video id="video" playsinline></video>
@@ -220,13 +247,13 @@
         <span class="pill" id="camState">Camera: idle</span>
         <button id="startCam" class="btn primary">Start</button>
       </div>
-      <div id="scanResult" class="hint" style="margin-top:8px">Point camera at barcode.</div>
+      <div id="scanResult" class="hint" style="margin-top:8px">Point camera at QR or barcode.</div>
       <div id="scanOrder" style="display:none"></div>
     </div>
   </dialog>
 
-  <!-- API Diagnostics Modal -->
-  <dialog id="apiModal" style="border:0;padding:0;border-radius:16px;background:#0f1730;color:var(--ink);width:min(720px,96vw)">
+  <!-- API Diagnostics Modal (hidden entry) -->
+  <dialog id="apiModal" style="border:0;padding:0;border-radius:16px;background:var(--card);color:var(--ink);width:min(720px,96vw)">
     <div class="card" style="border:0">
       <div class="row" style="justify-content:space-between;align-items:center">
         <h3 style="margin:0">Cloud Diagnostics</h3>
@@ -242,100 +269,84 @@
       <div style="margin-top:8px">
         <button id="runChecks" class="btn primary">Run Checks</button>
       </div>
-      <pre id="diagLog" style="white-space:pre-wrap;background:#0e1b30;border:1px solid #22314f;border-radius:12px;padding:10px;margin-top:10px;max-height:40vh;overflow:auto"></pre>
+      <pre id="diagLog" style="white-space:pre-wrap;background:color-mix(in oklab, var(--card) 90%, #0e1b30 20%);border:1px solid #22314f33;border-radius:12px;padding:10px;margin-top:10px;max-height:40vh;overflow:auto"></pre>
     </div>
   </dialog>
 </div>
 
 <script>
-// ---------- Helpers ----------
+/* Helpers */
 const $ = (q)=>document.querySelector(q);
 const on = (sel, evt, fn)=>{ const el=$(sel); if(el) el.addEventListener(evt, fn, {passive:true}); };
 const set = (sel, text)=>{ const el=$(sel); if(el) el.textContent = text; };
 const show = (sel, yes=true)=>{ const el=$(sel); if(!el) return; el.classList.toggle('hidden', !yes); };
 const money = (n)=> (isNaN(n)?0:n).toLocaleString(undefined,{style:'currency',currency:'USD'});
 
-// ---------- Icons ----------
-const icons={
-  can:`<svg viewBox='0 0 64 64' fill='none'><rect x='18' y='4' width='28' height='56' rx='6' stroke='#7dd3fc' stroke-width='3'/><rect x='22' y='10' width='20' height='44' rx='3' fill='#1a2744'/></svg>`,
-  bottle:`<svg viewBox='0 0 64 64' fill='none'><path d='M28 6h8v8a8 8 0 0 1 4 7v30a8 8 0 0 1-8 8h0a8 8 0 0 1-8-8V21a8 8 0 0 1 4-7V6z' stroke='#7dd3fc' stroke-width='3' fill='#1a2744'/></svg>`,
-  jug:`<svg viewBox='0 0 64 64' fill='none'><path d='M20 14h16l8 8v28a8 8 0 0 1-8 8H24a8 8 0 0 1-8-8V22a8 8 0 0 1 4-8z' stroke='#7dd3fc' stroke-width='3' fill='#1a2744'/><rect x='36' y='18' width='10' height='8' rx='2' stroke='#7dd3fc' stroke-width='3'/></svg>`,
-  glass:`<svg viewBox='0 0 64 64' fill='none'><path d='M16 6h32l-6 40a10 10 0 0 1-10 8h0a10 10 0 0 1-10-8L16 6z' stroke='#7dd3fc' stroke-width='3' fill='#1a2744'/></svg>`,
-  steel:`<svg viewBox='0 0 64 64' fill='none'><rect x='14' y='10' width='36' height='48' rx='6' stroke='#7dd3fc' stroke-width='3'/><path d='M18 22h28M18 30h28M18 38h28' stroke='#7dd3fc' stroke-width='2'/></svg>`,
-  cup:`<svg viewBox='0 0 64 64' fill='none'><path d='M14 10h36l-6 36a10 10 0 0 1-10 8h0a10 10 0 0 1-10-8L14 10z' stroke='#7dd3fc' stroke-width='3' fill='#1a2744'/></svg>`,
-  seven:`<svg viewBox='0 0 64 64' fill='none'><polygon points='8,12 56,12 28,56 12,56' stroke='#7dd3fc' stroke-width='3' fill='none'/><text x='28' y='40' fill='#7dd3fc' font-size='24' text-anchor='middle' font-family='monospace'>7</text></svg>`,
-  pouch:`<svg viewBox='0 0 64 64' fill='none'><path d='M20 10h24l6 10v28l-6 6H20l-6-6V20l6-10z' stroke='#7dd3fc' stroke-width='3' fill='#1a2744'/></svg>`,
-  baginbox:`<svg viewBox='0 0 64 64' fill='none'><rect x='10' y='12' width='44' height='40' rx='6' stroke='#7dd3fc' stroke-width='3' fill='none'/><circle cx='46' cy='44' r='6' stroke='#7dd3fc' stroke-width='3'/><path d='M44 44h4' stroke='#7dd3fc' stroke-width='3'/></svg>`,
-  carton:`<svg viewBox='0 0 64 64' fill='none'><path d='M22 12h20l6 10v28a6 6 0 0 1-6 6H22a6 6 0 0 1-6-6V22l6-10z' stroke='#7dd3fc' stroke-width='3' fill='#1a2744'/><path d='M42 12l6 10H22' stroke='#7dd3fc' stroke-width='2'/><path d='M44 18c6 2 8 2 10 2' stroke='#7dd3fc' stroke-width='2'/></svg>`
-};
-
-const materials={
-  ALUMINUM:{label:'Aluminum',unit:'lb',icon:icons.can},
-  GLASS:{label:'Glass',unit:'lb',icon:icons.glass},
-  PET1:{label:'#1 PET',unit:'lb',icon:icons.bottle},
-  HDPE2:{label:'#2 HDPE',unit:'lb',icon:icons.jug},
-  PVC3:{label:'#3 PVC',unit:'lb',icon:icons.bottle},
-  LDPE4:{label:'#4 LDPE',unit:'lb',icon:icons.bottle},
-  PP5:{label:'#5 PP',unit:'lb',icon:icons.cup},
-  PS6:{label:'#6 PS',unit:'lb',icon:icons.cup},
-  OTHER7:{label:'#7 Other Plastic',unit:'lb',icon:icons.seven},
-  BIMETAL:{label:'Bi-metal',unit:'lb',icon:icons.steel},
-  Pouch:{label:'Multi-Layer Pouch',unit:'lb',icon:icons.pouch},
-  BagInBox:{label:'Bag-in-Box (wine)',unit:'lb',icon:icons.baginbox},
-  JuiceBox:{label:'Paperboard Carton (BeatBox)',unit:'ea',icon:icons.carton}
-};
-
+/* Icons & Materials */
+const icons={can:`<svg viewBox='0 0 64 64' fill='none'><rect x='18' y='4' width='28' height='56' rx='6' stroke='#7dd3fc' stroke-width='3'/><rect x='22' y='10' width='20' height='44' rx='3' fill='#1a2744'/></svg>`,bottle:`<svg viewBox='0 0 64 64' fill='none'><path d='M28 6h8v8a8 8 0 0 1 4 7v30a8 8 0 0 1-8 8h0a8 8 0 0 1-8-8V21a8 8 0 0 1 4-7V6z' stroke='#7dd3fc' stroke-width='3' fill='#1a2744'/></svg>`,jug:`<svg viewBox='0 0 64 64' fill='none'><path d='M20 14h16l8 8v28a8 8 0 0 1-8 8H24a8 8 0 0 1-8-8V22a8 8 0 0 1 4-8z' stroke='#7dd3fc' stroke-width='3' fill='#1a2744'/><rect x='36' y='18' width='10' height='8' rx='2' stroke='#7dd3fc' stroke-width='3'/></svg>`,glass:`<svg viewBox='0 0 64 64' fill='none'><path d='M16 6h32l-6 40a10 10 0 0 1-10 8h0a10 10 0 0 1-10-8L16 6z' stroke='#7dd3fc' stroke-width='3' fill='#1a2744'/></svg>`,steel:`<svg viewBox='0 0 64 64' fill='none'><rect x='14' y='10' width='36' height='48' rx='6' stroke='#7dd3fc' stroke-width='3'/><path d='M18 22h28M18 30h28M18 38h28' stroke='#7dd3fc' stroke-width='2'/></svg>`,cup:`<svg viewBox='0 0 64 64' fill='none'><path d='M14 10h36l-6 36a10 10 0 0 1-10 8h0a10 10 0 0 1-10-8L14 10z' stroke='#7dd3fc' stroke-width='3' fill='#1a2744'/></svg>`,seven:`<svg viewBox='0 0 64 64' fill='none'><polygon points='8,12 56,12 28,56 12,56' stroke='#7dd3fc' stroke-width='3' fill='none'/><text x='28' y='40' fill='#7dd3fc' font-size='24' text-anchor='middle' font-family='monospace'>7</text></svg>`,pouch:`<svg viewBox='0 0 64 64' fill='none'><path d='M20 10h24l6 10v28l-6 6H20l-6-6V20l6-10z' stroke='#7dd3fc' stroke-width='3' fill='#1a2744'/></svg>`,baginbox:`<svg viewBox='0 0 64 64' fill='none'><rect x='10' y='12' width='44' height='40' rx='6' stroke='#7dd3fc' stroke-width='3' fill='none'/><circle cx='46' cy='44' r='6' stroke='#7dd3fc' stroke-width='3'/><path d='M44 44h4' stroke='#7dd3fc' stroke-width='3'/></svg>`,carton:`<svg viewBox='0 0 64 64' fill='none'><path d='M22 12h20l6 10v28a6 6 0 0 1-6 6H22a6 6 0 0 1-6-6V22l6-10z' stroke='#7dd3fc' stroke-width='3' fill='#1a2744'/><path d='M42 12l6 10H22' stroke='#7dd3fc' stroke-width='2'/><path d='M44 18c6 2 8 2 10 2' stroke='#7dd3fc' stroke-width='2'/></svg>`};
+const materials={ALUMINUM:{label:'Aluminum',unit:'lb',icon:icons.can},GLASS:{label:'Glass',unit:'lb',icon:icons.glass},PET1:{label:'#1 PET',unit:'lb',icon:icons.bottle},HDPE2:{label:'#2 HDPE',unit:'lb',icon:icons.jug},PVC3:{label:'#3 PVC',unit:'lb',icon:icons.bottle},LDPE4:{label:'#4 LDPE',unit:'lb',icon:icons.bottle},PP5:{label:'#5 PP',unit:'lb',icon:icons.cup},PS6:{label:'#6 PS',unit:'lb',icon:icons.cup},OTHER7:{label:'#7 Other Plastic',unit:'lb',icon:icons.seven},BIMETAL:{label:'Bi-metal',unit:'lb',icon:icons.steel},Pouch:{label:'Multi-Layer Pouch',unit:'lb',icon:icons.pouch},BagInBox:{label:'Bag-in-Box (wine)',unit:'lb',icon:icons.baginbox},JuiceBox:{label:'Paperboard Carton (BeatBox)',unit:'ea',icon:icons.carton}};
 let prices = JSON.parse(localStorage.getItem('sr_prices')||'null') || {ALUMINUM:1.65,GLASS:0.102,PET1:1.47,HDPE2:0.63,PVC3:0.48,LDPE4:0.98,PP5:0.55,PS6:0.31,OTHER7:0.41,BIMETAL:0.825,Pouch:0.41,BagInBox:3.79,JuiceBox_each:0.25};
 let selectedMat=null; const order=[];
 
-// Build material grid
+/* Build material grid */
 (function(){ const g=$('#matGrid'); if(!g) return; Object.entries(materials).forEach(([k,v])=>{const b=document.createElement('button'); b.className='mat-btn'; b.innerHTML=`${v.icon}<span>${v.label}</span>`; b.addEventListener('click',()=>onMaterial(k)); g.appendChild(b);}); })();
 
+/* Mode & panels */
 function isCount(){ return $('#cntMode')?.checked; }
 function updatePanels(){ if(!$('#countBox')) return; $('#countBox').style.display=isCount()?'block':'none'; $('#weightBox').style.display=isCount()?'none':'block'; }
 on('#cntMode','change',()=>{ updatePanels(); restoreGrid(); });
 updatePanels();
 
+/* Material click → choice buttons */
 function onMaterial(key){
   selectedMat=key; set('#chosenMatLabel','Material: '+materials[key].label);
   const p=$('#choicePanel'); if(!p) return; p.innerHTML='';
   if(isCount()){
     const qty=+($('#qty')?.value||0); if(!qty){ flashHint('Enter count first'); return; }
     $('#matGrid').style.display='none'; p.style.display='flex'; $('#editFab').style.display='flex';
-    p.append(makeBtn('< 24 oz (5¢)',()=>{addCountItem(0.05);restoreGrid();}), makeBtn('≥ 24 oz (10¢)',()=>{addCountItem(0.10);restoreGrid();}));
+    // Special 25¢ items: BagInBox, Pouch, JuiceBox (carton)
+    if(key==='BagInBox' || key==='Pouch' || key==='JuiceBox'){
+      p.append(makeBtn('25¢ each',()=>{addCountItem(0.25);restoreGrid();}));
+    }else{
+      p.append(makeBtn('< 24 oz (5¢)',()=>{addCountItem(0.05);restoreGrid();}),
+               makeBtn('≥ 24 oz (10¢)',()=>{addCountItem(0.10);restoreGrid();}));
+    }
   }else{
     const lbs=+($('#pounds')?.value||0); if(!lbs){ flashHint('Enter weight first'); return; }
     $('#matGrid').style.display='none'; p.style.display='flex'; $('#editFab').style.display='flex';
-    p.append(makeBtn('CRV',()=>{addWeightItem('CRV');restoreGrid();}), makeBtn(key==='ALUMINUM'?'$1.75/lb':'Non-CRV',()=>{addWeightItem(key==='ALUMINUM'?'ALU175':'NON');restoreGrid();}));
+    p.append(makeBtn('CRV',()=>{addWeightItem('CRV');restoreGrid();}),
+             makeBtn(key==='ALUMINUM'?'$1.75/lb':'Non-CRV',()=>{addWeightItem(key==='ALUMINUM'?'ALU175':'NON');restoreGrid();}));
   }
 }
 function makeBtn(txt,fn){ const b=document.createElement('button'); b.className='btn primary'; b.textContent=txt; b.addEventListener('click',fn); return b; }
 function restoreGrid(){ const p=$('#choicePanel'); if(!p) return; p.style.display='none'; $('#matGrid').style.display='grid'; set('#chosenMatLabel','Material: —'); selectedMat=null; $('#editFab').style.display='none'; }
 function flashHint(msg){ const el=$('#pickedHint'); if(!el) return; const prev=el.textContent; el.textContent=msg; setTimeout(()=>el.textContent=prev,1200); }
 
-// previews
-on('#pounds','input',()=>{ const lbs=+($('#pounds')?.value||0); set('#weightPreview', money(lbs*(prices[selectedMat]||0))); });
-on('#qty','input',()=>{ const qty=+($('#qty')?.value||0); set('#countPreview', money(qty*0.05)); });
+/* Previews */
+on('#pounds','input',()=>{ const lbs=+($('#pounds')?.value||0); const rate=(selectedMat && prices[selectedMat])||0; set('#weightPreview', money(lbs*rate)); });
+on('#qty','input',()=>{ const qty=+($('#qty')?.value||0); set('#countPreview', money(qty*0.05)); }); // base preview; special 25¢ applies after material pick
 
-// Add items
+/* Add items */
 function addWeightItem(kind){ if(!selectedMat){ alert('Pick a material below.'); return;} const lbs=+($('#pounds')?.value||0); if(!lbs) return; let rate=(prices[selectedMat]||0); let tag=(kind==='CRV')?'CRV':'Non-CRV'; if(selectedMat==='ALUMINUM'&&kind==='ALU175'){ rate=1.75; tag='Alu $1.75'; } order.push({type:'weight',mat:selectedMat,lbs,unitPrice:rate,subtotal:lbs*rate,detail:`${tag} · ${lbs.toFixed(2)} lb × ${money(rate)}/lb`}); $('#pounds').value=0; render(); }
-function addCountItem(per){ if(!selectedMat){ alert('Pick a material below.'); return;} const qty=+($('#qty')?.value||0); if(!qty) return; order.push({type:'crv',mat:selectedMat,qty,unitPrice:per,subtotal:qty*per,detail:`${qty} × ${(per===0.10?'10¢':'5¢')}`}); $('#qty').value=0; render(); }
+function addCountItem(per){ if(!selectedMat){ alert('Pick a material below.'); return;} const qty=+($('#qty')?.value||0); if(!qty) return; order.push({type:'crv',mat:selectedMat,qty,unitPrice:per,subtotal:qty*per,detail:`${qty} × ${(per===0.25?'25¢':per===0.10?'10¢':'5¢')}`}); $('#qty').value=0; render(); }
 
+/* Render order */
 function render(){ const tb=$('#orderTable tbody'); if(!tb) return; tb.innerHTML=''; let crv=0,wt=0; order.forEach((it,i)=>{const tr=document.createElement('tr'); tr.innerHTML=`<td>${materials[it.mat].label}</td><td>${it.detail}</td><td class="pricecell">${money(it.subtotal)}</td><td><button class='btn' data-i='${i}'>✕</button></td>`; tb.appendChild(tr); if(it.type==='weight') wt+=it.subtotal; else crv+=it.subtotal; }); set('#crvTotal',money(crv)); set('#weightTotal',money(wt)); set('#grandTotal',money(crv+wt)); tb.querySelectorAll('button[data-i]').forEach(b=>b.addEventListener('click',()=>{order.splice(+b.dataset.i,1);render();})); }
-
 on('#clearOrder','click',()=>{ order.splice(0,order.length); render(); });
 
-// Cloud (Firebase baked; no user override)
-const fbCfg = {
-  apiKey: "AIzaSyCSRYYjuJyO6_N2n9RaA8T2fXRaHiC3q6o",
-  authDomain: "recycle-cb24b.firebaseapp.com",
-  projectId: "recycle-cb24b",
-  storageBucket: "recycle-cb24b.appspot.com",
-  messagingSenderId: "281209650356",
-  appId: "1:281209650356:web:a3b55a3b4d7ce5e642abe1",
-  measurementId: "G-4DFFS1RH83"
-};
+/* Theme toggle */
+(function(){
+  const saved = localStorage.getItem('sr_theme')||'';
+  if(saved==='light') document.documentElement.setAttribute('data-theme','light');
+  on('#themeBtn','click', ()=>{
+    const isLight = document.documentElement.getAttribute('data-theme')==='light';
+    document.documentElement.setAttribute('data-theme', isLight?'':'light');
+    localStorage.setItem('sr_theme', isLight?'dark':'light');
+  });
+})();
 
+/* Firebase (baked config) */
+const fbCfg = { apiKey:"AIzaSyCSRYYjuJyO6_N2n9RaA8T2fXRaHiC3q6o", authDomain:"recycle-cb24b.firebaseapp.com", projectId:"recycle-cb24b", storageBucket:"recycle-cb24b.appspot.com", messagingSenderId:"281209650356", appId:"1:281209650356:web:a3b55a3b4d7ce5e642abe1", measurementId:"G-4DFFS1RH83" };
 let auth=null, db=null;
 async function initFirebase(){
   try{
@@ -345,7 +356,6 @@ async function initFirebase(){
     const app = initializeApp(fbCfg);
     auth = getAuth(app); await setPersistence(auth, browserLocalPersistence);
     db = getFirestore(app); enableIndexedDbPersistence(db).catch(()=>{});
-    // expose helpers
     window.cloud = {
       async saveOrder(o){ await setDoc(doc(db,'orders',o.id), o); },
       async getOrder(id){ const s=await getDoc(doc(db,'orders',id)); return s.exists()? s.data(): null; },
@@ -368,7 +378,7 @@ async function initFirebase(){
 }
 initFirebase();
 
-// Login / Logout
+/* Login / Logout */
 on('#authLogin','click', async ()=>{
   const email = $('#authEmail')?.value.trim();
   const pass  = $('#authPass')?.value.trim();
@@ -377,172 +387,119 @@ on('#authLogin','click', async ()=>{
 });
 on('#logoutBtn','click', async ()=>{ try{ await window.__signout(); }catch{} });
 
-// Save order
+/* Save order */
 let __lastSavedOrder = null;
 on('#printLast','click', ()=>{ if(__lastSavedOrder) printReceipt(__lastSavedOrder); else alert('Save an order first.'); });
 on('#saveOrder','click', async ()=>{
-  if(!$('#barcodeOk')?.checked){ set('#saveHint','Barcode must be verified (checked) to save.'); return; }
   if(!order.length){ set('#saveHint','Add some items first.'); return; }
   const payload={ id:'SR-'+Date.now(), when:new Date().toISOString(), barcodeVerified:true, items:[...order], totals:{ crv:$('#crvTotal').textContent, weight:$('#weightTotal').textContent, grand:$('#grandTotal').textContent } };
   try{ await window.cloud.saveOrder(payload); __lastSavedOrder = payload; const plBtn=document.querySelector('#printLast'); if(plBtn) plBtn.disabled=false; order.splice(0,order.length); render(); set('#saveHint','Saved to cloud ✔'); setTimeout(()=>set('#saveHint',''),1400);}catch(e){ set('#saveHint','Cloud save failed (check rules/login).'); }
 });
 
-// Prices modal
+/* Prices modal */
 on('#openPrices','click', ()=>{ buildPricesForm(); $('#pricesModal').showModal(); });
 function buildPricesForm(){ const grid=$('#priceGrid'); grid.innerHTML=''; Object.keys(materials).forEach(k=>{ if(materials[k].unit==='ea') return; const row=document.createElement('div'); row.className='row'; row.style.flexDirection='column'; row.innerHTML=`<label>${materials[k].label}</label><input type='number' step='0.001' id='p_${k}' value='${prices[k]??''}' placeholder='$/lb'>`; grid.appendChild(row); }); const jb=document.createElement('div'); jb.className='row'; jb.style.flexDirection='column'; jb.innerHTML=`<label>Paperboard Carton (BeatBox) – price each</label><input type='number' step='0.01' id='p_JuiceBox_each' value='${prices.JuiceBox_each??0.25}' placeholder='$/ea'>`; grid.appendChild(jb); set('#priceSyncState', window.cloud?'Cloud prices: connected':'Cloud prices: local only'); }
 on('#refreshPrices','click', async ()=>{ try{ const doc=await window.cloud.getPrices(); if(doc?.map){ prices={...prices,...doc.map}; localStorage.setItem('sr_prices',JSON.stringify(prices)); buildPricesForm(); } }catch{} });
 on('#savePrices','click', async ()=>{ const next={}; Object.keys(materials).forEach(k=>{ if(materials[k].unit==='lb'){ next[k]=+(($('#p_'+k)||{}).value||0)||0; } }); next.JuiceBox_each=+(($('#p_JuiceBox_each')||{}).value||0.25)||0.25; prices={...prices,...next}; localStorage.setItem('sr_prices',JSON.stringify(prices)); try{ await window.cloud.setPrices(prices);}catch{} $('#pricesModal').close(); });
 
-// Orders modal
+/* Orders modal */
 on('#viewOrders','click', async ()=>{
   const list=$('#ordersList'); list.innerHTML='';
   try{
     const all=await window.cloud.listOrders();
     if(!all.length){ list.innerHTML='<div class="hint">No orders yet.</div>'; ordersModal.showModal(); return; }
-    all.forEach(o=>{ const div=document.createElement('div'); div.className='card'; 
-      const header=document.createElement('div'); header.className='row'; header.style.justifyContent='space-between'; header.style.alignItems='center'; 
-      const left=document.createElement('b'); left.textContent=o.id; 
-      const btn=document.createElement('button'); btn.className='btn primary'; btn.textContent='Barcode'; btn.addEventListener('click',()=>showBarcode(o.id));
-      const rbtn=document.createElement('button'); rbtn.className='btn'; rbtn.textContent='Receipt'; rbtn.style.marginLeft='6px'; rbtn.addEventListener('click',()=>printReceiptById(o.id)); 
-      const right=document.createElement('span'); right.className='hint'; right.textContent=new Date(o.when).toLocaleString()+` · Barcode: ${o.barcodeVerified?'✔':'✕'}`; 
-      header.append(left,btn,rbtn,right); 
-      const ul=document.createElement('ul'); ul.innerHTML=(o.items||[]).map(it=>`<li>${(materials[it.mat]||{label:it.mat}).label} — ${it.detail} <b>${money(it.subtotal)}</b></li>`).join(''); 
-      const totals=document.createElement('div'); totals.className='row'; totals.style.justifyContent='flex-end'; totals.style.gap='16px'; totals.innerHTML=`<span>CRV: <b>${o.totals?.crv||'$0.00'}</b></span><span>Weight: <b>${o.totals?.weight||'$0.00'}</b></span><span>Grand: <b>${o.totals?.grand||'$0.00'}</b></span>`; 
-      div.append(header,ul,totals); list.appendChild(div); 
-    }); 
+    all.forEach(o=>{ const div=document.createElement('div'); div.className='card';
+      const header=document.createElement('div'); header.className='row'; header.style.justifyContent='space-between'; header.style.alignItems='center';
+      const left=document.createElement('b'); left.textContent=o.id;
+      const btn=document.createElement('button'); btn.className='btn primary'; btn.textContent='Code'; btn.addEventListener('click',()=>showBarcode(o.id));
+      const rbtn=document.createElement('button'); rbtn.className='btn'; rbtn.textContent='Receipt'; rbtn.style.marginLeft='6px'; rbtn.addEventListener('click',()=>printReceiptById(o.id));
+      const right=document.createElement('span'); right.className='hint'; right.textContent=new Date(o.when).toLocaleString()+` · Barcode: ${o.barcodeVerified?'✔':'✕'}`;
+      header.append(left,btn,rbtn,right);
+      const ul=document.createElement('ul'); ul.innerHTML=(o.items||[]).map(it=>`<li>${(materials[it.mat]||{label:it.mat}).label} — ${it.detail} <b>${money(it.subtotal)}</b></li>`).join('');
+      const totals=document.createElement('div'); totals.className='row'; totals.style.justifyContent='flex-end'; totals.style.gap='16px'; totals.innerHTML=`<span>CRV: <b>${o.totals?.crv||'$0.00'}</b></span><span>Weight: <b>${o.totals?.weight||'$0.00'}</b></span><span>Grand: <b>${o.totals?.grand||'$0.00'}</b></span>`;
+      div.append(header,ul,totals); list.appendChild(div);
+    });
     ordersModal.showModal();
   }catch(e){ list.innerHTML='<div class="hint">Cloud read failed (check rules/login).</div>'; ordersModal.showModal(); }
 });
 
-// Barcode
-function showBarcode(text){ try{ JsBarcode('#barcodeSVG', text, {format:'CODE128', lineColor:'#e5efff', background:'#111a2b', width:2, height:120, margin:10, displayValue:true, fontSize:18}); set('#barcodeHint',text); $('#barcodeModal').showModal(); }catch(e){ alert('Barcode render error: '+e.message); } }
-on('#shareBar','click', async ()=>{ const svg=$('#barcodeSVG'); const s=new XMLSerializer().serializeToString(svg); const data='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(s); try{ if(navigator.share && navigator.canShare){ const r=await fetch(data); const blob=await r.blob(); const file=new File([blob],'barcode.svg',{type:'image/svg+xml'}); if(navigator.canShare({files:[file]})){ await navigator.share({files:[file], title:'Order Barcode'}); return; } } window.open(data,'_blank'); }catch(e){ window.open(data,'_blank'); } });
-on('#printBar','click', ()=>{ const w=window.open('','print'); const html=`<html><head><title>Barcode</title></head><body style='margin:0;padding:20px'>${$('#barcodeSVG').outerHTML}<script>window.onload=()=>{window.print();setTimeout(()=>window.close(),300);}</`+'script></body></html>'; w.document.write(html); w.document.close(); });
+/* Code modal: QR primary + Code128 fallback */
+function showBarcode(text){
+  set('#barcodeHint', text);
+  // QR primary
+  try{
+    const canvas = $('#qrCanvas');
+    QRCode.toCanvas(canvas, text, { width: 320, margin: 1 }, function(err){
+      if(err) console.warn('QR error', err);
+    });
+  }catch(e){ console.warn('QR lib error', e); }
+  // Code128 fallback (hidden)
+  try{
+    JsBarcode('#barcodeSVG', text, {format:'CODE128', lineColor:'#111', background:'#fff0', width:2, height:120, margin:10, displayValue:true, fontSize:18});
+  }catch(e){}
+  $('#barcodeModal').showModal();
+}
+on('#shareBar','click', async ()=>{
+  const canvas=$('#qrCanvas');
+  try{
+    const data=canvas.toDataURL('image/png');
+    if(navigator.share && navigator.canShare){
+      const r=await fetch(data); const blob=await r.blob();
+      const file=new File([blob],'order.png',{type:'image/png'});
+      if(navigator.canShare({files:[file]})){ await navigator.share({files:[file], title:'Order Code'}); return; }
+    }
+    window.open(data,'_blank');
+  }catch(e){ window.open(canvas.toDataURL('image/png'),'_blank'); }
+});
+on('#printBar','click', ()=>{
+  const canvas=$('#qrCanvas');
+  const w=window.open('','print');
+  const html=`<html><head><title>Code</title></head><body style='margin:0;padding:20px;text-align:center'><img src='${canvas.toDataURL('image/png')}' style='max-width:320px;width:100%'><script>window.onload=()=>{window.print();setTimeout(()=>window.close(),300);}</`+'script></body></html>';
+  w.document.write(html); w.document.close();
+});
 
-// Scanner
+/* Scanner */
 const hasDetector = 'BarcodeDetector' in window;
-on('#scanBtn','click', ()=>{ set('#apiState','API: '+(hasDetector?'supported ✔':'not supported ✖')); set('#scanResult','Point camera at barcode.'); $('#scanOrder').style.display='none'; $('#scanModal').showModal(); });
+on('#scanBtn','click', ()=>{ set('#apiState','API: '+(hasDetector?'supported ✔':'not supported ✖')); set('#scanResult','Point camera at QR or barcode.'); $('#scanOrder').style.display='none'; $('#scanModal').showModal(); });
 let stream=null, raf=null, detector=null;
-async function startScan(){ try{ stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}}); set('#camState','Camera: on ✔'); const v=$('#video'); v.srcObject=stream; await v.play(); if(hasDetector){ detector = new BarcodeDetector({formats:['code_128','code_39','ean_13','upc_a','qr_code']}); loopScan(); } else { set('#scanResult','This browser does not support BarcodeDetector.'); } }catch(e){ set('#camState','Camera: error'); alert(e.message); } }
+async function startScan(){ try{ stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}}); set('#camState','Camera: on ✔'); const v=$('#video'); v.srcObject=stream; await v.play(); if(hasDetector){ detector = new BarcodeDetector({formats:['qr_code','code_128','code_39','ean_13','upc_a']}); loopScan(); } else { set('#scanResult','This browser does not support BarcodeDetector.'); } }catch(e){ set('#camState','Camera: error'); alert(e.message); } }
 function stopScan(){ try{ if(raf) cancelAnimationFrame(raf); if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; } set('#camState','Camera: idle'); }catch(e){} }
 on('#startCam','click', ()=>{ if(stream){ stopScan(); } else { startScan(); } });
 async function loopScan(){ const v=$('#video'); const tick=async()=>{ try{ const codes=await detector.detect(v); if(codes && codes.length){ const val=codes[0].rawValue||codes[0].displayValue||''; await onScan(val); return; } }catch(e){} raf=requestAnimationFrame(tick); }; tick(); }
 async function onScan(val){ if(!val) return; stopScan(); set('#scanResult','Scanned: '+val); let o=null; try{ o=await window.cloud.getOrder(val);}catch{} if(o){ const rows=(o.items||[]).map(it=>`<li>${(materials[it.mat]||{label:it.mat}).label} — ${it.detail} <b>${money(it.subtotal)}</b></li>`).join(''); $('#scanOrder').style.display='block'; $('#scanOrder').innerHTML=`<h3 style='margin:10px 0'>${o.id}</h3><div class='hint'>${new Date(o.when).toLocaleString()} · Barcode: ${o.barcodeVerified?'✔':'✕'}</div><ul>${rows}</ul><div class='row' style='justify-content:flex-end;gap:16px'><span>CRV: <b>${o.totals?.crv||'$0.00'}</b></span><span>Weight: <b>${o.totals?.weight||'$0.00'}</b></span><span>Grand: <b>${o.totals?.grand||'$0.00'}</b></span></div><div class='row' style='justify-content:center;margin-top:10px'><button class='btn' onclick='(${startScan.toString()})();'>Scan Again</button></div>`; } else { $('#scanOrder').style.display='block'; $('#scanOrder').innerHTML = "<div class='hint'>No match found in cloud.</div>"; } }
 
-// Firestore rules health nudge after sign-in
-window.addEventListener('load', ()=> setTimeout(async ()=>{ try{ if(!auth?.currentUser||!db) return; const { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js'); await getDoc(doc(db,'settings','prices')); }catch(e){ set('#cloudStatus','Cloud: permission denied (check rules email)'); } }, 1200));
+/* Diagnostics (kept, but API button hidden) */
+const diag={ log:(m)=>{ const el=$('#diagLog'); if(el){ el.textContent += (m+'\\n'); el.scrollTop=el.scrollHeight; }}};
+on('#apiBtn','click', ()=>{ $('#apiModal').showModal(); set('#diagSdk','SDK: '+((auth||db)?'loaded ✔':'not loaded ✖')); set('#diagApp','App: initialized ✔'); set('#diagAuth','Auth: '+(auth?.currentUser?('signed in '+auth.currentUser.email):'signed out')); set('#diagFS','Firestore: '+(db?'ready ✔':'not ready ✖')); set('#diagRules','Rules check: idle'); });
+on('#runChecks','click', async ()=>{ try{ set('#diagSdk','SDK: '+((auth||db)?'loaded ✔':'not loaded ✖')); set('#diagApp','App: initialized ✔'); set('#diagAuth','Auth: '+(auth?.currentUser?('signed in '+auth.currentUser.email):'signed out')); set('#diagFS','Firestore: '+(db?'ready ✔':'not ready ✖')); if(db){ try{ const { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js'); const snap = await getDoc(doc(db,'settings','prices')); diag.log('Read settings/prices: '+(snap.exists()?'OK':'NOT FOUND')); set('#diagFS','Firestore: read '+(snap.exists()?'OK ✔':'not found')); }catch(e){ diag.log('Read error: '+(e.message||e)); set('#diagFS','Firestore: read error ✖'); } try{ const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js'); await setDoc(doc(db,'diagnostics','ping'), { at: new Date().toISOString(), by: auth?.currentUser?.email || null }); set('#diagRules','Rules check: write OK ✔'); diag.log('Write diagnostics/ping: OK'); }catch(e){ const code = e?.code || ''; set('#diagRules','Rules check: '+(code||'write failed ✖')); diag.log('Write error: '+(code||e.message||e)); } } }catch(e){ diag.log('Checks failed: '+(e.message||e)); } });
 
-// ---------- Diagnostics ----------
-const diag = {
-  log: (msg)=>{ const el=$('#diagLog'); if(el){ el.textContent += (msg+'\n'); el.scrollTop = el.scrollHeight; } console.log('[DIAG]', msg); }
-};
-on('#apiBtn','click', ()=>{
-  $('#apiModal').showModal();
-  set('#diagSdk','SDK: '+((auth||db)?'loaded ✔':'not loaded ✖'));
-  set('#diagApp','App: initialized ✔');
-  set('#diagAuth','Auth: '+(auth?.currentUser?('signed in '+auth.currentUser.email):'signed out'));
-  set('#diagFS','Firestore: '+(db?'ready ✔':'not ready ✖'));
-  set('#diagRules','Rules check: idle');
-});
-on('#runChecks','click', async ()=>{
-  try{
-    set('#diagSdk','SDK: '+((auth||db)?'loaded ✔':'not loaded ✖'));
-    set('#diagApp','App: initialized ✔');
-    set('#diagAuth','Auth: '+(auth?.currentUser?('signed in '+auth.currentUser.email):'signed out'));
-    set('#diagFS','Firestore: '+(db?'ready ✔':'not ready ✖'));
-    if(db){
-      try{
-        const { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js');
-        const snap = await getDoc(doc(db,'settings','prices'));
-        diag.log('Read settings/prices: '+(snap.exists()?'OK':'NOT FOUND'));
-        set('#diagFS','Firestore: read '+(snap.exists()?'OK ✔':'not found'));
-      }catch(e){
-        diag.log('Read error: '+(e.message||e));
-        set('#diagFS','Firestore: read error ✖');
-      }
-      try{
-        const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js');
-        await setDoc(doc(db,'diagnostics','ping'), { at: new Date().toISOString(), by: auth?.currentUser?.email || null });
-        set('#diagRules','Rules check: write OK ✔');
-        diag.log('Write diagnostics/ping: OK');
-      }catch(e){
-        const code = e?.code || '';
-        set('#diagRules','Rules check: '+(code||'write failed ✖'));
-        diag.log('Write error: '+(code||e.message||e));
-      }
-    }
-  }catch(e){
-    diag.log('Checks failed: '+(e.message||e));
-  }
-});
-
-// ---------- Receipt Printing ----------
+/* Receipt Printing (QR primary) */
 function buildReceiptHTML(order){
-  const items = (order.items||[]).map(it=>{
-    const name = (materials[it.mat]||{label:it.mat}).label;
-    return `<tr><td>${name}</td><td>${it.detail}</td><td style="text-align:right">${(isNaN(it.subtotal)?0:it.subtotal).toLocaleString(undefined,{style:'currency',currency:'USD'})}</td></tr>`;
-  }).join('');
-  const when = new Date(order.when||Date.now()).toLocaleString();
-  const subtotalCRV = order.totals?.crv || '$0.00';
-  const subtotalWT  = order.totals?.weight || '$0.00';
-  const grand       = order.totals?.grand || '$0.00';
-  const id = order.id || 'UNSAVED';
-
-  return `<!doctype html>
-<html>
-<head>
-<meta charset="utf-8">
-<title>Receipt ${id}</title>
-<style>
-  @media print { @page { margin: 8mm } body { margin:0 } }
-  body{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; color:#111; padding:12px; line-height:1.25}
-  .center{text-align:center}
-  .small{font-size:12px;color:#333}
-  table{width:100%; border-collapse:collapse; margin-top:6px}
-  th,td{padding:4px 0; border-bottom:1px dashed #ccc; font-size:14px}
-  tfoot td{border-bottom:0; font-weight:700}
-  .totals td{padding-top:8px}
-  .logo{font-weight:700; letter-spacing:.5px; font-size:16px}
-  .muted{color:#666}
-  .row{display:flex; justify-content:space-between; align-items:center}
-  .barcode{width:100%; max-width:340px; margin:10px auto}
-</style>
-</head>
-<body>
+  const items=(order.items||[]).map(it=>{const name=(materials[it.mat]||{label:it.mat}).label; return `<tr><td>${name}</td><td>${it.detail}</td><td style="text-align:right">${(isNaN(it.subtotal)?0:it.subtotal).toLocaleString(undefined,{style:'currency',currency:'USD'})}</td></tr>`;}).join('');
+  const when=new Date(order.when||Date.now()).toLocaleString(); const subtotalCRV=order.totals?.crv||'$0.00'; const subtotalWT=order.totals?.weight||'$0.00'; const grand=order.totals?.grand||'$0.00'; const id=order.id||'UNSAVED';
+  return `<!doctype html><html><head><meta charset="utf-8"><title>Receipt ${id}</title>
+  <style>@media print{@page{margin:8mm}body{margin:0}}body{font-family:ui-monospace,Menlo,Consolas,monospace;color:#111;padding:12px;line-height:1.25}
+  .center{text-align:center}.small{font-size:12px;color:#333}table{width:100%;border-collapse:collapse;margin-top:6px}
+  th,td{padding:4px 0;border-bottom:1px dashed #ccc;font-size:14px}tfoot td{border-bottom:0;font-weight:700}.totals td{padding-top:8px}.logo{font-weight:700;letter-spacing:.5px;font-size:16px}.barcode{width:100%;max-width:240px;margin:10px auto}</style>
+  </head><body>
   <div class="center logo">Receipt</div>
-  <div class="center small muted">${when}</div>
+  <div class="center small">${when}</div>
   <div class="small">Order ID: <b>${id}</b></div>
-  <table>
-    <thead><tr><th style="text-align:left">Item</th><th style="text-align:left">Detail</th><th style="text-align:right">Subtotal</th></tr></thead>
-    <tbody>${items}</tbody>
-    <tfoot>
-      <tr class="totals"><td colspan="2">CRV total</td><td style="text-align:right">${subtotalCRV}</td></tr>
-      <tr><td colspan="2">Weight total</td><td style="text-align:right">${subtotalWT}</td></tr>
-      <tr><td colspan="2">Grand total</td><td style="text-align:right">${grand}</td></tr>
-    </tfoot>
-  </table>
-  <div class="center"><svg id="rcptBarcode" class="barcode"></svg></div>
-  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
-  <script>
-    try{ JsBarcode('#rcptBarcode', '${id}'.replace('UNSAVED',''), {format:'CODE128', width:2, height:80, margin:4, displayValue:true}); }catch(e){}
-    window.onload = ()=>{ setTimeout(()=>{ window.print(); setTimeout(()=>window.close(), 300); }, 200); };
-  <\/script>
-</body>
-</html>`;
+  <table><thead><tr><th style="text-align:left">Item</th><th style="text-align:left">Detail</th><th style="text-align:right">Subtotal</th></tr></thead>
+  <tbody>${items}</tbody>
+  <tfoot><tr class="totals"><td colspan="2">CRV total</td><td style="text-align:right">${subtotalCRV}</td></tr>
+  <tr><td colspan="2">Weight total</td><td style="text-align:right">${subtotalWT}</td></tr>
+  <tr><td colspan="2">Grand total</td><td style="text-align:right">${grand}</td></tr></tfoot></table>
+  <div class="center"><canvas id="rcptQR" class="barcode"></canvas></div>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"><\/script>
+  <script>try{QRCode.toCanvas(document.getElementById('rcptQR'),'${id}',{width:240,margin:1});}catch(e){} window.onload=()=>{setTimeout(()=>{window.print();setTimeout(()=>window.close(),300);},200);};<\/script>
+  </body></html>`;
 }
-async function printReceipt(order){
-  if(!order){ alert('No order to print'); return; }
-  const w = window.open('', 'receipt');
-  w.document.write(buildReceiptHTML(order));
-  w.document.close();
-}
-async function printReceiptById(id){
-  try{
-    const o = await window.cloud.getOrder(id);
-    if(!o){ alert('Order not found'); return; }
-    printReceipt(o);
-  }catch(e){ alert('Could not load order'); }
-}
+async function printReceipt(order){ if(!order){ alert('No order to print'); return; } const w=window.open('','receipt'); w.document.write(buildReceiptHTML(order)); w.document.close(); }
+async function printReceiptById(id){ try{ const o=await window.cloud.getOrder(id); if(!o){ alert('Order not found'); return; } printReceipt(o); }catch(e){ alert('Could not load order'); } }
+
+/* Firestore health nudge */
+window.addEventListener('load', ()=> setTimeout(async ()=>{ try{ if(!auth?.currentUser||!db) return; const { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js'); await getDoc(doc(db,'settings','prices')); }catch(e){ set('#cloudStatus','Cloud: permission denied (check rules email)'); } }, 1200));
 </script>
 </body>
 </html>
