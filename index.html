@@ -68,6 +68,7 @@
       </div>
       <div class="row" style="justify-content:space-between; align-items:center">
         <span id="cloudState" class="pill">Cloud: starting…</span>
+        <button id="apiBtn" class="btn">API</button>
       </div>
     </div>
   </div>
@@ -125,7 +126,7 @@
           <thead>
             <tr><th>Item</th><th>Detail</th><th class="pricecell">Subtotal</th><th></th></tr>
           </thead>
-          <tbody></tbody>
+            <tbody></tbody>
           <tfoot>
             <tr><td colspan="2">CRV total</td><td class="pricecell" id="crvTotal">$0.00</td><td></td></tr>
             <tr><td colspan="2">Weight total</td><td class="pricecell" id="weightTotal">$0.00</td><td></td></tr>
@@ -223,6 +224,27 @@
       <div id="scanOrder" style="display:none"></div>
     </div>
   </dialog>
+
+  <!-- API Diagnostics Modal -->
+  <dialog id="apiModal" style="border:0;padding:0;border-radius:16px;background:#0f1730;color:var(--ink);width:min(720px,96vw)">
+    <div class="card" style="border:0">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <h3 style="margin:0">Cloud Diagnostics</h3>
+        <button class="btn" onclick="apiModal.close()">✕</button>
+      </div>
+      <div class="row" style="flex-direction:column;gap:6px">
+        <div class="pill" id="diagSdk">SDK: pending…</div>
+        <div class="pill" id="diagApp">App: pending…</div>
+        <div class="pill" id="diagAuth">Auth: pending…</div>
+        <div class="pill" id="diagFS">Firestore: pending…</div>
+        <div class="pill" id="diagRules">Rules check: pending…</div>
+      </div>
+      <div style="margin-top:8px">
+        <button id="runChecks" class="btn primary">Run Checks</button>
+      </div>
+      <pre id="diagLog" style="white-space:pre-wrap;background:#0e1b30;border:1px solid #22314f;border-radius:12px;padding:10px;margin-top:10px;max-height:40vh;overflow:auto"></pre>
+    </div>
+  </dialog>
 </div>
 
 <script>
@@ -295,8 +317,6 @@ function flashHint(msg){ const el=$('#pickedHint'); if(!el) return; const prev=e
 on('#pounds','input',()=>{ const lbs=+($('#pounds')?.value||0); set('#weightPreview', money(lbs*(prices[selectedMat]||0))); });
 on('#qty','input',()=>{ const qty=+($('#qty')?.value||0); set('#countPreview', money(qty*0.05)); });
 
-function money(n){return (isNaN(n)?0:n).toLocaleString(undefined,{style:'currency',currency:'USD'});}
-
 // Add items
 function addWeightItem(kind){ if(!selectedMat){ alert('Pick a material below.'); return;} const lbs=+($('#pounds')?.value||0); if(!lbs) return; let rate=(prices[selectedMat]||0); let tag=(kind==='CRV')?'CRV':'Non-CRV'; if(selectedMat==='ALUMINUM'&&kind==='ALU175'){ rate=1.75; tag='Alu $1.75'; } order.push({type:'weight',mat:selectedMat,lbs,unitPrice:rate,subtotal:lbs*rate,detail:`${tag} · ${lbs.toFixed(2)} lb × ${money(rate)}/lb`}); $('#pounds').value=0; render(); }
 function addCountItem(per){ if(!selectedMat){ alert('Pick a material below.'); return;} const qty=+($('#qty')?.value||0); if(!qty) return; order.push({type:'crv',mat:selectedMat,qty,unitPrice:per,subtotal:qty*per,detail:`${qty} × ${(per===0.10?'10¢':'5¢')}`}); $('#qty').value=0; render(); }
@@ -358,6 +378,7 @@ on('#authLogin','click', async ()=>{
 on('#logoutBtn','click', async ()=>{ try{ await window.__signout(); }catch{} });
 
 // Save order
+let __lastSavedOrder = null;
 on('#printLast','click', ()=>{ if(__lastSavedOrder) printReceipt(__lastSavedOrder); else alert('Save an order first.'); });
 on('#saveOrder','click', async ()=>{
   if(!$('#barcodeOk')?.checked){ set('#saveHint','Barcode must be verified (checked) to save.'); return; }
@@ -378,8 +399,18 @@ on('#viewOrders','click', async ()=>{
   try{
     const all=await window.cloud.listOrders();
     if(!all.length){ list.innerHTML='<div class="hint">No orders yet.</div>'; ordersModal.showModal(); return; }
-    all.forEach(o=>{ const div=document.createElement('div'); div.className='card'; const header=document.createElement('div'); header.className='row'; header.style.justifyContent='space-between'; header.style.alignItems='center'; const left=document.createElement('b'); left.textContent=o.id; const btn=document.createElement('button'); btn.className='btn primary'; btn.textContent='Barcode'; btn.addEventListener('click',()=>showBarcode(o.id));
-    const rbtn=document.createElement('button'); rbtn.className='btn'; rbtn.textContent='Receipt'; rbtn.style.marginLeft='6px'; rbtn.addEventListener('click',()=>printReceiptById(o.id)); const right=document.createElement('span'); right.className='hint'; right.textContent=new Date(o.when).toLocaleString()+` · Barcode: ${o.barcodeVerified?'✔':'✕'}`; header.append(left,btn,rbtn,right); const ul=document.createElement('ul'); ul.innerHTML=(o.items||[]).map(it=>`<li>${(materials[it.mat]||{label:it.mat}).label} — ${it.detail} <b>${money(it.subtotal)}</b></li>`).join(''); const totals=document.createElement('div'); totals.className='row'; totals.style.justifyContent='flex-end'; totals.style.gap='16px'; totals.innerHTML=`<span>CRV: <b>${o.totals?.crv||'$0.00'}</b></span><span>Weight: <b>${o.totals?.weight||'$0.00'}</b></span><span>Grand: <b>${o.totals?.grand||'$0.00'}</b></span>`; div.append(header,ul,totals); list.appendChild(div); }); ordersModal.showModal();
+    all.forEach(o=>{ const div=document.createElement('div'); div.className='card'; 
+      const header=document.createElement('div'); header.className='row'; header.style.justifyContent='space-between'; header.style.alignItems='center'; 
+      const left=document.createElement('b'); left.textContent=o.id; 
+      const btn=document.createElement('button'); btn.className='btn primary'; btn.textContent='Barcode'; btn.addEventListener('click',()=>showBarcode(o.id));
+      const rbtn=document.createElement('button'); rbtn.className='btn'; rbtn.textContent='Receipt'; rbtn.style.marginLeft='6px'; rbtn.addEventListener('click',()=>printReceiptById(o.id)); 
+      const right=document.createElement('span'); right.className='hint'; right.textContent=new Date(o.when).toLocaleString()+` · Barcode: ${o.barcodeVerified?'✔':'✕'}`; 
+      header.append(left,btn,rbtn,right); 
+      const ul=document.createElement('ul'); ul.innerHTML=(o.items||[]).map(it=>`<li>${(materials[it.mat]||{label:it.mat}).label} — ${it.detail} <b>${money(it.subtotal)}</b></li>`).join(''); 
+      const totals=document.createElement('div'); totals.className='row'; totals.style.justifyContent='flex-end'; totals.style.gap='16px'; totals.innerHTML=`<span>CRV: <b>${o.totals?.crv||'$0.00'}</b></span><span>Weight: <b>${o.totals?.weight||'$0.00'}</b></span><span>Grand: <b>${o.totals?.grand||'$0.00'}</b></span>`; 
+      div.append(header,ul,totals); list.appendChild(div); 
+    }); 
+    ordersModal.showModal();
   }catch(e){ list.innerHTML='<div class="hint">Cloud read failed (check rules/login).</div>'; ordersModal.showModal(); }
 });
 
@@ -398,14 +429,53 @@ on('#startCam','click', ()=>{ if(stream){ stopScan(); } else { startScan(); } })
 async function loopScan(){ const v=$('#video'); const tick=async()=>{ try{ const codes=await detector.detect(v); if(codes && codes.length){ const val=codes[0].rawValue||codes[0].displayValue||''; await onScan(val); return; } }catch(e){} raf=requestAnimationFrame(tick); }; tick(); }
 async function onScan(val){ if(!val) return; stopScan(); set('#scanResult','Scanned: '+val); let o=null; try{ o=await window.cloud.getOrder(val);}catch{} if(o){ const rows=(o.items||[]).map(it=>`<li>${(materials[it.mat]||{label:it.mat}).label} — ${it.detail} <b>${money(it.subtotal)}</b></li>`).join(''); $('#scanOrder').style.display='block'; $('#scanOrder').innerHTML=`<h3 style='margin:10px 0'>${o.id}</h3><div class='hint'>${new Date(o.when).toLocaleString()} · Barcode: ${o.barcodeVerified?'✔':'✕'}</div><ul>${rows}</ul><div class='row' style='justify-content:flex-end;gap:16px'><span>CRV: <b>${o.totals?.crv||'$0.00'}</b></span><span>Weight: <b>${o.totals?.weight||'$0.00'}</b></span><span>Grand: <b>${o.totals?.grand||'$0.00'}</b></span></div><div class='row' style='justify-content:center;margin-top:10px'><button class='btn' onclick='(${startScan.toString()})();'>Scan Again</button></div>`; } else { $('#scanOrder').style.display='block'; $('#scanOrder').innerHTML = "<div class='hint'>No match found in cloud.</div>"; } }
 
-// FAB back
-on('#editFab','click', restoreGrid);
-
 // Firestore rules health nudge after sign-in
 window.addEventListener('load', ()=> setTimeout(async ()=>{ try{ if(!auth?.currentUser||!db) return; const { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js'); await getDoc(doc(db,'settings','prices')); }catch(e){ set('#cloudStatus','Cloud: permission denied (check rules email)'); } }, 1200));
-</script>
 
-<script>
+// ---------- Diagnostics ----------
+const diag = {
+  log: (msg)=>{ const el=$('#diagLog'); if(el){ el.textContent += (msg+'\n'); el.scrollTop = el.scrollHeight; } console.log('[DIAG]', msg); }
+};
+on('#apiBtn','click', ()=>{
+  $('#apiModal').showModal();
+  set('#diagSdk','SDK: '+((auth||db)?'loaded ✔':'not loaded ✖'));
+  set('#diagApp','App: initialized ✔');
+  set('#diagAuth','Auth: '+(auth?.currentUser?('signed in '+auth.currentUser.email):'signed out'));
+  set('#diagFS','Firestore: '+(db?'ready ✔':'not ready ✖'));
+  set('#diagRules','Rules check: idle');
+});
+on('#runChecks','click', async ()=>{
+  try{
+    set('#diagSdk','SDK: '+((auth||db)?'loaded ✔':'not loaded ✖'));
+    set('#diagApp','App: initialized ✔');
+    set('#diagAuth','Auth: '+(auth?.currentUser?('signed in '+auth.currentUser.email):'signed out'));
+    set('#diagFS','Firestore: '+(db?'ready ✔':'not ready ✖'));
+    if(db){
+      try{
+        const { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js');
+        const snap = await getDoc(doc(db,'settings','prices'));
+        diag.log('Read settings/prices: '+(snap.exists()?'OK':'NOT FOUND'));
+        set('#diagFS','Firestore: read '+(snap.exists()?'OK ✔':'not found'));
+      }catch(e){
+        diag.log('Read error: '+(e.message||e));
+        set('#diagFS','Firestore: read error ✖');
+      }
+      try{
+        const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js');
+        await setDoc(doc(db,'diagnostics','ping'), { at: new Date().toISOString(), by: auth?.currentUser?.email || null });
+        set('#diagRules','Rules check: write OK ✔');
+        diag.log('Write diagnostics/ping: OK');
+      }catch(e){
+        const code = e?.code || '';
+        set('#diagRules','Rules check: '+(code||'write failed ✖'));
+        diag.log('Write error: '+(code||e.message||e));
+      }
+    }
+  }catch(e){
+    diag.log('Checks failed: '+(e.message||e));
+  }
+});
+
 // ---------- Receipt Printing ----------
 function buildReceiptHTML(order){
   const items = (order.items||[]).map(it=>{
@@ -460,16 +530,12 @@ function buildReceiptHTML(order){
 </body>
 </html>`;
 }
-
-let __lastSavedOrder = null;
-
 async function printReceipt(order){
   if(!order){ alert('No order to print'); return; }
   const w = window.open('', 'receipt');
   w.document.write(buildReceiptHTML(order));
   w.document.close();
 }
-
 async function printReceiptById(id){
   try{
     const o = await window.cloud.getOrder(id);
