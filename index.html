@@ -103,10 +103,15 @@
   .dot.active{background:var(--accent)}
 </style>
 
-<!-- Libraries -->
+<!-- Third-party libs -->
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js"></script>
+
+<!-- Firebase (compat CDN: most reliable on iPhone Safari + Netlify) -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
@@ -125,7 +130,7 @@
         <button id="authLogin" class="btn success">Sign in</button>
       </div>
       <div class="row" style="justify-content:space-between; align-items:center">
-        <span id="cloudState" class="pill">Cloud: starting…</span>
+        <span id="cloudState" class="pill">Cloud: initializing…</span>
         <button id="apiBtn" class="btn" style="display:none">API</button>
       </div>
     </div>
@@ -284,7 +289,7 @@
 
   </div> <!-- /wrap -->
 
-  <!-- Floating pencil (back to materials in regular layout) -->
+  <!-- Floating pencil -->
   <button id="editFab" class="fab" aria-label="Back to materials" title="Back to materials"><span>✎</span></button>
 
   <!-- Prices Modal -->
@@ -356,6 +361,18 @@
 </div>
 
 <script>
+/* ---------- Global error -> visible status ---------- */
+window.addEventListener('error', (e)=>{
+  const msg = 'Cloud error: ' + (e?.error?.message || e?.message || 'script error');
+  const el = document.querySelector('#cloudState'); if(el) el.textContent = msg;
+  console.error('Global error:', e);
+});
+window.addEventListener('unhandledrejection', (e)=>{
+  const msg = 'Cloud error: ' + (e?.reason?.message || e?.reason || 'promise error');
+  const el = document.querySelector('#cloudState'); if(el) el.textContent = msg;
+  console.error('Unhandled rejection:', e);
+});
+
 /* ------ Helpers ------ */
 const $ = (q)=>document.querySelector(q);
 const on = (sel, evt, fn)=>{ const el=$(sel); if(el) el.addEventListener(evt, fn, {passive:true}); };
@@ -381,33 +398,32 @@ const materials={ALUMINUM:{label:'Aluminum',unit:'lb',icon:icons.can},GLASS:{lab
 let prices = JSON.parse(localStorage.getItem('sr_prices')||'null') || {ALUMINUM:1.65,GLASS:0.102,PET1:1.47,HDPE2:0.63,PVC3:0.48,LDPE4:0.98,PP5:0.55,PS6:0.31,OTHER7:0.41,BIMETAL:0.825,Pouch:0.41,BagInBox:3.79,JuiceBox_each:0.25};
 let selectedMat=null; const order=[];
 
-/* Build material grids (both layouts) */
+/* Build material grids */
 (function(){
   const build=(gridId)=>{ const g=$(gridId); if(!g) return; g.innerHTML=''; Object.entries(materials).forEach(([k,v])=>{const b=document.createElement('button'); b.className='mat-btn'; b.innerHTML=`${v.icon}<span>${v.label}</span>`; b.addEventListener('click',()=>onMaterial(k)); g.appendChild(b);}); };
   build('#matGrid'); build('#matGridW');
 })();
 
-/* Mode & panels (regular) */
+/* Modes, inputs, pencil */
 function isCount(){ return $('#cntMode')?.checked; }
 function updatePanels(){ if(!$('#countBox')) return; $('#countBox').style.display=isCount()?'block':'none'; $('#weightBox').style.display=isCount()?'none':'block'; }
 on('#cntMode','change',()=>{ updatePanels(); restoreGrid(); });
 updatePanels();
 
-/* Mode & panels (wizard) */
 function isCountW(){ return $('#cntModeW')?.checked; }
 function updatePanelsW(){ $('#countBoxW').style.display=isCountW()?'block':'none'; $('#weightBoxW').style.display=isCountW()?'none':'block'; validateStep(); }
 on('#cntModeW','change',()=>{ updatePanelsW(); selectedMat=null; set('#pickedHintW','Enter value then choose.'); hideChoiceW(); });
 updatePanelsW();
 
-/* Auto-clear inputs */
 function autoPrep(sel){ const el=$(sel); if(!el) return; if(el.value==='0'||el.value==='0.00') el.value=''; el.select?.(); }
 function autoRestore(sel){ const el=$(sel); if(!el) return; if(!el.value) el.value='0'; }
 ['#pounds','#qty','#poundsW','#qtyW'].forEach(id=>{
   on(id,'focus', ()=>autoPrep(id));
   on(id,'blur',  ()=>autoRestore(id));
 });
+on('#editFab','click', ()=>{ restoreGrid(); window.scrollTo({top:document.getElementById('materialsCard').offsetTop-20, behavior:'smooth'}); });
 
-/* Material click → choice buttons (both layouts) */
+/* Material choice flow */
 function onMaterial(key){
   selectedMat=key; set('#chosenMatLabel','Material: '+materials[key].label); set('#chosenMatLabelW','Material: '+materials[key].label);
   const isW = isLandscapePhone();
@@ -439,7 +455,6 @@ function makeBtn(txt,fn){ const b=document.createElement('button'); b.className=
 function restoreGrid(){ ['#choicePanel','#choicePanelW'].forEach(id=>{ const p=$(id); if(p){ p.style.display='none'; } }); ['#matGrid','#matGridW'].forEach(id=>{ const g=$(id); if(g){ g.style.display='grid'; } }); set('#chosenMatLabel','Material: —'); set('#chosenMatLabelW','Material: —'); selectedMat=null; $('#editFab').style.display='none'; }
 function hideChoiceW(){ const p=$('#choicePanelW'); if(p){ p.style.display='none'; } const g=$('#matGridW'); if(g){ g.style.display='grid'; } }
 function flashHint(msg){ const el = isLandscapePhone() ? $('#pickedHintW') : $('#pickedHint'); if(!el) return; const prev=el.textContent; el.textContent=msg; setTimeout(()=>el.textContent=prev,1200); }
-on('#editFab','click', ()=>{ restoreGrid(); window.scrollTo({top:document.getElementById('materialsCard').offsetTop-20, behavior:'smooth'}); });
 
 /* Previews */
 on('#pounds','input', ()=>{ const lbs=+($('#pounds')?.value||0); const rate=(selectedMat && prices[selectedMat])||0; set('#weightPreview', money(lbs*rate)); });
@@ -447,7 +462,7 @@ on('#qty','input',    ()=>{ const qty=+($('#qty')?.value||0); set('#countPreview
 on('#poundsW','input',()=>{ const lbs=+($('#poundsW')?.value||0); const rate=(selectedMat && prices[selectedMat])||0; set('#weightPreviewW', money(lbs*rate)); validateStep(); });
 on('#qtyW','input',   ()=>{ const qty=+($('#qtyW')?.value||0); set('#countPreviewW', money(qty*0.05)); validateStep(); });
 
-/* Add items (Non-CRV → $0.00 payout) */
+/* Add items */
 function addWeightItem(kind){
   if(!selectedMat){ alert('Pick a material below.'); return;}
   const lbs = isLandscapePhone() ? +($('#poundsW')?.value||0) : +($('#pounds')?.value||0);
@@ -507,7 +522,7 @@ on('#clearOrder','click',()=>{ order.splice(0,order.length); render(); });
 on('#clearOrderW','click',()=>{ order.splice(0,order.length); render(); });
 
 /* ----- Landscape Wizard Logic ----- */
-let step=0; // 0 enter, 1 materials, 2 order
+let step=0;
 function syncLayoutsVisibility(){
   const isW = isLandscapePhone();
   show('#regularLayout', !isW);
@@ -525,7 +540,7 @@ function validateStep(){
 }
 function updateDots(){ ['#d0','#d1','#d2'].forEach((id,i)=>{ const el=$(id); if(el){ el.classList.toggle('active', i===step); } }); }
 function scrollToPanel(i){ ['#panelEnter','#panelMaterials','#panelOrder'][i] && $(['#panelEnter','#panelMaterials','#panelOrder'][i]).scrollIntoView({behavior:'smooth',block:'start'}); }
-function wizardGo(i, fromAuto=false){
+function wizardGo(i){
   step = Math.max(0, Math.min(2, i));
   updateDots(); validateStep();
   const nextBtn = $('#stepNext');
@@ -534,54 +549,51 @@ function wizardGo(i, fromAuto=false){
   if(step===2){ nextBtn.textContent='New Item'; nextBtn.disabled=false; }
   scrollToPanel(step);
 }
-on('#stepPrev','click', ()=>{ wizardGo(step-1,false); });
+on('#stepPrev','click', ()=>{ wizardGo(step-1); });
 on('#stepNext','click', ()=>{
-  if(step===2){ wizardGo(0,false); return; }
-  wizardGo(step+1,false);
+  if(step===2){ wizardGo(0); return; }
+  wizardGo(step+1);
 });
 window.addEventListener('resize', syncLayoutsVisibility);
 window.addEventListener('orientationchange', ()=> setTimeout(syncLayoutsVisibility, 200));
 syncLayoutsVisibility();
 
-/* ---------- Firebase (baked config) ---------- */
+/* ---------- Firebase (compat; your exact project config) ---------- */
 const fbCfg = {
-  apiKey:"AIzaSyCSRYYjuJyO6_N2n9RaA8T2fXRaHiC3q6o",
-  authDomain:"recycle-cb24b.firebaseapp.com",
-  projectId:"recycle-cb24b",
-  storageBucket:"recycle-cb24b.appspot.com",
-  messagingSenderId:"281209650356",
-  appId:"1:281209650356:web:a3b55a3b4d7ce5e642abe1",
-  measurementId:"G-4DFFS1RH83"
+  apiKey: "AIzaSyCSRYYjuJyO6_N2n9RaA8T2fXRaHiC3q6o",
+  authDomain: "recycle-cb24b.firebaseapp.com",
+  projectId: "recycle-cb24b",
+  storageBucket: "recycle-cb24b.firebasestorage.app",
+  messagingSenderId: "281209650356",
+  appId: "1:281209650356:web:a3b55a3b4d7ce5e642abe1",
+  measurementId: "G-4DFFS1RH83"
 };
 let auth=null, db=null;
-async function initFirebase(){
+let firebaseReady = false;
+
+function initFirebaseCompat(){
   try{
-    const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js');
-    const { getFirestore, doc, setDoc, getDoc, collection, getDocs, query, orderBy, deleteDoc, enableIndexedDbPersistence } =
-      await import('https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js');
-    const { getAuth, onAuthStateChanged, setPersistence, browserLocalPersistence, signInWithEmailAndPassword, signOut } =
-      await import('https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js');
+    const app = firebase.initializeApp(fbCfg);
+    auth = firebase.auth();
+    db   = firebase.firestore();
 
-    const app = initializeApp(fbCfg);
-    auth = getAuth(app);
-    await setPersistence(auth, browserLocalPersistence);
+    // Optional offline (ignore if it errors)
+    db.enablePersistence({synchronizeTabs:true}).catch(()=>{});
 
-    db = getFirestore(app);
-    enableIndexedDbPersistence(db).catch(()=>{});
+    // Keep user signed in
+    auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{});
 
+    // Cloud helpers
     window.cloud = {
-      async saveOrder(o){ return setDoc(doc(db,'orders',o.id), o); },
-      async getOrder(id){ const s=await getDoc(doc(db,'orders',id)); return s.exists()? s.data(): null; },
-      async listOrders(){ const qy=query(collection(db,'orders'), orderBy('when','desc')); const s=await getDocs(qy); return s.docs.map(d=>d.data()); },
-      async clearAll(){ const s=await getDocs(collection(db,'orders')); await Promise.all(s.docs.map(d=>deleteDoc(d.ref))); },
-      async getPrices(){ const s=await getDoc(doc(db,'settings','prices')); return s.exists()? s.data(): null; },
-      async setPrices(map){ return setDoc(doc(db,'settings','prices'), { map, updatedAt: new Date().toISOString() }); }
+      async saveOrder(o){ return db.collection('orders').doc(o.id).set(o); },
+      async getOrder(id){ const s=await db.collection('orders').doc(id).get(); return s.exists? s.data(): null; },
+      async listOrders(){ const s=await db.collection('orders').orderBy('when','desc').get(); return s.docs.map(d=>d.data()); },
+      async clearAll(){ const s=await db.collection('orders').get(); const batch=db.batch(); s.docs.forEach(d=>batch.delete(d.ref)); await batch.commit(); },
+      async getPrices(){ const s=await db.collection('settings').doc('prices').get(); return s.exists? s.data(): null; },
+      async setPrices(map){ return db.collection('settings').doc('prices').set({ map, updatedAt: new Date().toISOString() }); }
     };
 
-    window.__signin  = (email,pass)=>signInWithEmailAndPassword(auth,email,pass);
-    window.__signout = ()=>signOut(auth);
-
-    onAuthStateChanged(auth,(user)=>{
+    auth.onAuthStateChanged((user)=>{
       if(user){
         set('#cloudStatus','Cloud: connected');
         set('#staffStatus',`Staff: ${user.email||user.uid}`);
@@ -592,24 +604,33 @@ async function initFirebase(){
       }
     });
 
-    window.cloudReady = true;
+    firebaseReady = true;
     set('#cloudState','Cloud: ready');
   }catch(e){
     console.error('Firebase init error:', e);
     set('#cloudState','Cloud error: '+(e.message||e));
-    window.cloudReady = false;
+    firebaseReady = false;
   }
 }
-initFirebase();
+initFirebaseCompat();
 
 /* Login / Logout */
 on('#authLogin','click', async ()=>{
   const email = $('#authEmail')?.value.trim();
   const pass  = $('#authPass')?.value.trim();
   if(!email || !pass){ set('#authHint','Enter email and password'); return; }
-  try{ set('#authHint','Signing in…'); await window.__signin(email,pass); set('#authHint','Signed in. Loading…'); }catch(e){ const code=e?.code||''; const map={'auth/invalid-email':'Invalid email.','auth/user-not-found':'No user with that email.','auth/wrong-password':'Wrong password.','auth/invalid-credential':'Invalid credentials.','auth/network-request-failed':'Network error.'}; set('#authHint',map[code]||('Login failed: '+code)); }
+  try{
+    set('#authHint','Signing in…');
+    await auth.signInWithEmailAndPassword(email,pass);
+    set('#authHint','Signed in. Loading…');
+  }catch(e){
+    console.error(e);
+    const code=e?.code||'';
+    const map={'auth/invalid-email':'Invalid email.','auth/user-not-found':'No user with that email.','auth/wrong-password':'Wrong password.','auth/invalid-credential':'Invalid credentials.','auth/network-request-failed':'Network error.'};
+    set('#authHint',map[code]||('Login failed: '+code));
+  }
 });
-on('#logoutBtn','click', async ()=>{ try{ await window.__signout(); }catch{} });
+on('#logoutBtn','click', async ()=>{ try{ await auth.signOut(); }catch{} });
 
 /* Save order (shared) */
 let __lastSavedOrder = null;
@@ -626,7 +647,7 @@ on('#printLastW',()=>{ if(__lastSavedOrder) printReceipt(__lastSavedOrder); else
 async function saveOrderCommon(hintSel, printSel){
   set(hintSel,'');
   if(!order.length){ set(hintSel,'Add some items first.'); return; }
-  if(!window.cloudReady || !window.cloud || !db){ set(hintSel,'Cloud not ready. Try again in a moment.'); return; }
+  if(!firebaseReady || !window.cloud || !db){ set(hintSel,'Cloud not ready. Try again in a moment.'); return; }
   if(!auth || !auth.currentUser){ set(hintSel,'Please sign in first.'); return; }
 
   const payload={ id:'SR-'+Date.now(), when:new Date().toISOString(), barcodeVerified:true, items:[...order], totals: currentTotals() };
@@ -652,7 +673,8 @@ function buildPricesForm(){
   Object.keys(materials).forEach(k=>{
     if(materials[k].unit==='ea') return;
     const row=document.createElement('div'); row.className='row'; row.style.flexDirection='column';
-    row.innerHTML=`<label>${materials[k].label}</label><input type='number' step='0.001' id='p_${k}' value='${prices[k]??''}' placeholder='$/lb'>`;
+    row.innerHTML=`<label>${materials[k]}.label</label>`.replace('${materials[k]}.label', materials[k].label)
+               + `<input type='number' step='0.001' id='p_${k}' value='${prices[k]??''}' placeholder='$/lb'>`;
     grid.appendChild(row);
   });
   const jb=document.createElement('div'); jb.className='row'; jb.style.flexDirection='column';
@@ -783,7 +805,7 @@ async function onScan(val){
   }
 }
 
-/* ----- Receipt Printing (single GRAND TOTAL; no per-line prices) ----- */
+/* ----- Receipt Printing (GRAND TOTAL only) ----- */
 function buildReceiptHTML(order){
   const items = (order.items||[]);
   const lines = items.map(it=>{
@@ -840,8 +862,15 @@ function buildReceiptHTML(order){
 async function printReceipt(order){ if(!order){ alert('No order to print'); return; } const w=window.open('','receipt'); w.document.write(buildReceiptHTML(order)); w.document.close(); }
 async function printReceiptById(id){ try{ const o=await window.cloud.getOrder(id); if(!o){ alert('Order not found'); return; } printReceipt(o); }catch(e){ alert('Could not load order'); } }
 
-/* Firestore rules nudge */
-window.addEventListener('load', ()=> setTimeout(async ()=>{ try{ if(!auth?.currentUser||!db) return; const { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js'); await getDoc(doc(db,'settings','prices')); }catch(e){ set('#cloudStatus','Cloud: permission denied (check rules email)'); } }, 1200));
+/* Firestore rules nudge (surfacing permission errors visibly) */
+window.addEventListener('load', ()=> setTimeout(async ()=>{
+  try{
+    if(!auth?.currentUser||!db) return;
+    await db.collection('settings').doc('prices').get();
+  }catch(e){
+    set('#cloudStatus','Cloud: permission denied (check rules / authorized domain)');
+  }
+}, 1200));
 </script>
 </body>
 </html>
