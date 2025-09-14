@@ -1,4 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Login</title>
+<style>
+  :root{
+    --bg:#070c16; --bg2:#0b1320; --card:#0f1730; --muted:#8ca0c3;
+    --accent:#7dd3fc; --ok:#22c55e; --danger:#ef4444; --ink:#e5efff;
+    --border:#22314f33;
+  }
+  [data-theme="light"]{
+    --bg:#f7fafc; --bg2:#eef2f7; --card:#ffffff; --muted:#5b6b83;
+    --accent:#0ea5e9; --ok:#16a34a; --danger:#dc2626; --ink:#0b1320;
+    --border:#d7e0ee;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;color:var(--ink);
+    background:radial-gradient(80vw 80vh at 10% 10%, #0f1f3d 0%, var(--bg) 60%),
+               linear-gradient(180deg, var(--bg2), var(--bg) 60%);
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",sans-serif;
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  .hidden{display:none!important}
+  .row{display:flex; gap:10px; flex-wrap:wrap}
+  .pill{background:color-mix(in oklab, var(--card) 70%, #0f1a2d); border:1px solid var(--border); border-radius:999px; padding:6px 10px; white-space:nowrap}
+  .btn{padding:12px 16px; cursor:pointer; transition:transform .06s ease, filter .2s ease; font:inherit; border-radius:12px; border:1px solid var(--border); background:color-mix(in oklab, var(--card) 90%, #0e1b30 14%); color:var(--ink)}
+  .btn:active{transform:translateY(1px)}
+  .btn.primary{background:color-mix(in oklab, var(--accent) 14%, var(--card)); border-color:var(--border)}
+  .btn.success{background:var(--ok); border-color:#16a34a; color:#05210f}
+  .btn.danger{background:var(--danger); border-color:#b91c1c}
+  .btn[disabled]{opacity:.6; cursor:not-allowed}
+  input,textarea{font:inherit; border-radius:12px; border:1px solid var(--border); background:color-mix(in oklab, var(--card) 92%, #0e1b30 14%); color:var(--ink); padding:12px}
+  input[type=number]{text-align:center}
+  /* --- Auth Screen --- */
+  #authScreen{position:fixed; inset:0; display:flex; align-items:center; justify-content:center; padding:24px; background:radial-gradient(60vw 60vh at 20% 10%, #11234622 0%, var(--bg) 60%); overflow:auto;}
+  .auth-card{ width:min(520px, 96vw); background:color-mix(in oklab, var(--card) 70%, #111a2b22); backdrop-filter: blur(10px); border:1px solid var(--border); border-radius:18px; padding:18px; box-shadow:0 20px 80px rgba(0,0,0,.20)}
+  .title{display:flex; align-items:center; gap:10px; margin:0 0 8px}
+  .title .dot{width:12px; height:12px; border-radius:999px; background:var(--accent); box-shadow:0 0 16px color-mix(in oklab, var(--accent) 60%, white)}
+  .subtitle{color:var(--muted); margin:0 0 12px}
+  .hint{color:var(--muted); font-size:.9rem; min-height:1.2em}
+  /* App shell */
+  .wrap{max-width:960px; margin:0 auto; padding:14px}
+  header{display:flex; gap:10px; align-items:center; justify-content:space-between}
+  .badge{font-size:.72rem; color:var(--bg2); background:var(--accent); padding:4px 8px; border-radius:999px; font-weight:700}
+  .card{background:var(--card); border:1px solid var(--border); border-radius:16px; padding:12px}
+  table{width:100%; border-collapse:collapse}
+  th,td{padding:10px; border-bottom:1px solid var(--border); text-align:left}
+  .pricecell{white-space:nowrap}
+  .sticky-bottom{position:sticky; bottom:0; background:linear-gradient(180deg,transparent,var(--bg2) 24%); padding-top:6px}
+  .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:10px}
+  .mat-btn{display:flex; flex-direction:column; gap:6px; align-items:center; justify-content:center; background:color-mix(in oklab, var(--card) 92%, #0e1b3020); border:1px solid var(--border); border-radius:14px; padding:10px; min-height:104px; transition:transform .08s ease, box-shadow .2s ease}
+  .mat-btn:hover{transform:translateY(-2px); box-shadow:0 8px 20px rgba(0,0,0,.15)}
+  .mat-btn svg{width:40px; height:40px}
+  .mat-btn span{font-size:.8rem; text-align:center}
+  .fab{position:fixed; right:16px; bottom:16px; width:56px; height:56px; border-radius:999px; background:color-mix(in oklab, var(--card) 80%, #1f2b45); border:1px solid #2a3e6633; display:none; align-items:center; justify-content:center; box-shadow:0 8px 24px rgba(0,0,0,.20)}
+  video{width:100%; border-radius:16px; background:#000}
+  @media (max-width:420px){ header .row{gap:6px} .btn{padding:10px 12px} .grid{grid-template-columns:repeat(3,1fr)} }
+
+  /* iPhone 15 Pro Max (portrait) */
+  @supports (-webkit-touch-callout: none) {
+    @media screen and (device-width:430px) and (device-height:932px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait) {
+      .wrap{padding:12px}
+      .btn{padding:14px 16px}
+      .grid{grid-template-columns:repeat(4,1fr)}
+      .mat-btn{min-height:112px}
+      header .row{gap:6px}
+      body{padding-bottom:calc(env(safe-area-inset-bottom) + 8px)}
+    }
+    /* iPhone 15 Pro Max (LANDSCAPE): wizard mode */
+    @media screen and (device-width:932px) and (device-height:430px) and (-webkit-device-pixel-ratio:3) and (orientation:landscape) {
+      .wrap{max-width:none;padding:10px}
+      .landscape-hide{display:none!important}
+      .wizard{display:flex; overflow-x:hidden; height:calc(100vh - 72px); gap:0}
+      .panel{flex:0 0 100%; padding:10px; overflow:auto}
+      .panel > .card{margin-bottom:10px}
+      #wizardNav{display:flex}
+    }
+  }
+  /* Generic phones in LANDSCAPE → wizard */
+  @media (orientation:landscape) and (max-height:480px){
+    .wrap{max-width:none;padding:10px}
+    .landscape-hide{display:none!important}
+    .wizard{display:flex; overflow-x:hidden; height:calc(100vh - 72px); gap:0}
+    .panel{flex:0 0 100%; padding:10px; overflow:auto}
+    .panel > .card{margin-bottom:10px}
+    #wizardNav{display:flex}
+  }
+
+  /* Wizard nav */
+  #wizardNav{
+    display:none; position:fixed; left:0; right:0; bottom:0;
+    padding:8px max(10px, env(safe-area-inset-left)) calc(8px + env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-right));
+    background:linear-gradient(180deg, transparent, color-mix(in oklab, var(--bg2) 80%, #000 10%));
+    backdrop-filter: blur(6px);
+    align-items:center; justify-content:space-between; gap:10px; z-index:50;
+  }
+  .dots{display:flex; gap:6px}
+  .dot{width:8px; height:8px; border-radius:50%; background:#516891}
+  .dot.active{background:var(--accent)}
+</style>
+
+<!-- Libraries -->
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js"></script>
+</head>
+<body>
+
+<!-- AUTH SCREEN -->
+<div id="authScreen">
+  <div class="auth-card">
+    <div class="title"><span class="dot"></span><h1 style="margin:0;font-size:1.6rem">Login</h1></div>
+    <p class="subtitle">Sign in to access orders & scanning.</p>
+    <div class="row" style="flex-direction:column; gap:8px">
+      <label>Email</label>
+      <input id="authEmail" placeholder="example@gmail.com" autocomplete="username" />
+      <label>Password</label>
+      <input id="authPass" type="password" placeholder="••••" autocomplete="current-password" />
+      <div class="row" style="justify-content:space-between; align-items:center">
+        <span id="authHint" class="hint">Enter your staff email and password.</span>
+        <button id="authLogin" class="btn success">Sign in</button>
+      </div>
+      <div class="row" style="justify-content:space-between; align-items:center">
+        <span id="cloudState" class="pill">Cloud: starting…</span>
+        <button id="apiBtn" class="btn" style="display:none">API</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- APP SHELL -->
+<div id="appShell" class="hidden">
+  <div class="wrap">
+    <header>
+      <h1>Recycling<span class="badge">POS</span></h1>
+      <div class="row" style="gap:8px;align-items:center">
+        <span id="cloudStatus" class="pill">Cloud: not connected</span>
+        <span id="staffStatus" class="pill">Staff: guest</span>
+        <button id="scanBtn" class="btn">Scan</button>
+        <button id="openPrices" class="btn">Prices</button>
+        <button id="viewOrders" class="btn">Orders</button>
+        <button id="themeBtn" class="btn" title="Toggle theme">☀︎/🌙</button>
+        <button id="logoutBtn" class="btn">Logout</button>
+      </div>
+    </header>
+
+    <!-- Regular layout (portrait/desktop) -->
+    <div id="regularLayout">
+      <div class="row" style="margin-top:12px">
+        <!-- ENTRY -->
+        <div id="entryCard" class="card" style="flex:1;min-width:280px">
+          <div class="row" style="justify-content:space-between;align-items:center">
+            <b>Entry</b>
+            <label class="row" style="align-items:center;gap:6px"><input type="checkbox" id="cntMode"><span class="hint">CNT (Count mode)</span></label>
+          </div>
+
+          <div id="weightBox" class="card" style="margin-top:10px">
+            <label for="pounds">Weight (lb)</label>
+            <input id="pounds" type="number" step="0.01" inputmode="decimal" min="0" value="0" enterkeyhint="done">
+            <div class="hint" id="weightPreview">$0.00</div>
+          </div>
+
+          <div id="countBox" class="card" style="margin-top:10px;display:none">
+            <label for="qty">Count (auto-CRV / special)</label>
+            <input id="qty" type="number" inputmode="numeric" pattern="[0-9]*" value="0" min="0" enterkeyhint="done">
+            <div class="hint" id="countPreview">$0.00</div>
+          </div>
+
+          <!-- Hidden but checked -->
+          <div class="card" style="margin-top:10px; display:none">
+            <div class="row" style="align-items:center">
+              <label for="barcodeOk">Barcode verified</label>
+              <input id="barcodeOk" type="checkbox" checked style="width:22px;height:22px">
+            </div>
+          </div>
+        </div>
+
+        <!-- ORDER -->
+        <div id="orderCard" class="card" style="flex:1;min-width:280px">
+          <h3 style="margin:0 0 6px">Current Order</h3>
+          <div class="hint" id="chosenMatLabel" style="margin:4px 0 8px">Material: —</div>
+          <table id="orderTable">
+            <thead>
+              <tr><th>Item</th><th>Detail</th><th class="pricecell">Subtotal</th><th></th></tr>
+            </thead>
+            <tbody></tbody>
+            <tfoot>
+              <tr><td colspan="2">CRV total</td><td class="pricecell" id="crvTotal">$0.00</td><td></td></tr>
+              <tr><td colspan="2">Weight total</td><td class="pricecell" id="weightTotal">$0.00</td><td></td></tr>
+              <tr><td colspan="2">Grand total</td><td class="pricecell" id="grandTotal">$0.00</td><td></td></tr>
+            </tfoot>
+          </table>
+          <div class="sticky-bottom">
+            <div class="row" style="justify-content:space-between;gap:8px">
+              <button id="clearOrder" class="btn danger">Clear</button>
+              <div class="row" style="gap:8px">
+                <button id="printLast" class="btn" disabled>Receipt</button>
+                <button id="saveOrder" class="btn success">Save Order</button>
+              </div>
+            </div>
+            <p class="hint" id="saveHint"></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- MATERIALS -->
+      <div id="materialsCard" class="card" style="margin-top:12px">
+        <label style="display:block;margin-bottom:8px">Materials</label>
+        <div id="matGrid" class="grid"></div>
+        <div id="choicePanel" class="row" style="gap:10px;display:none;flex-wrap:wrap"></div>
+        <div class="hint" id="pickedHint">Weight by default. Enter lbs first, then tap a material; grid hides and shows CRV (left) / Non-CRV (right). If <b>CNT</b> is checked, enter quantity then tap material to get &lt;24 (5¢) / ≥24 (10¢). <b>Bag-in-Box, Pouch, Carton = 25¢ each</b>. Aluminum right button = $1.75/lb. <b>Non-CRV has no payout.</b></div>
+      </div>
+    </div>
+
+    <!-- LANDSCAPE WIZARD (phones only) -->
+    <div id="wizardLayout" class="wizard landscape-hide">
+      <section class="panel" id="panelEnter">
+        <div class="card">
+          <div class="row" style="justify-content:space-between;align-items:center">
+            <b>Step 1 — Enter</b>
+            <label class="row" style="align-items:center;gap:6px"><input type="checkbox" id="cntModeW"><span class="hint">CNT (Count)</span></label>
+          </div>
+          <div id="weightBoxW" class="card" style="margin-top:10px">
+            <label for="poundsW">Weight (lb)</label>
+            <input id="poundsW" type="number" step="0.01" inputmode="decimal" min="0" value="0" enterkeyhint="next">
+            <div class="hint" id="weightPreviewW">$0.00</div>
+          </div>
+          <div id="countBoxW" class="card" style="margin-top:10px;display:none">
+            <label for="qtyW">Count</label>
+            <input id="qtyW" type="number" inputmode="numeric" pattern="[0-9]*" value="0" min="0" enterkeyhint="next">
+            <div class="hint" id="countPreviewW">$0.00</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" id="panelMaterials">
+        <div class="card">
+          <b>Step 2 — Pick Material</b>
+          <div id="matGridW" class="grid" style="margin-top:8px"></div>
+          <div id="choicePanelW" class="row" style="gap:10px;display:none;flex-wrap:wrap"></div>
+          <div class="hint" id="pickedHintW">Enter value in Step 1, then choose. Special: Bag-in-Box / Pouch / Carton = 25¢ each. <b>Non-CRV has no payout.</b></div>
+        </div>
+      </section>
+
+      <section class="panel" id="panelOrder">
+        <div class="card">
+          <b>Step 3 — Order</b>
+          <div class="hint" id="chosenMatLabelW" style="margin:4px 0 8px">Material: —</div>
+          <table id="orderTableW">
+            <thead><tr><th>Item</th><th>Detail</th><th class="pricecell">Subtotal</th><th></th></tr></thead>
+            <tbody></tbody>
+            <tfoot>
+              <tr><td colspan="2">CRV total</td><td class="pricecell" id="crvTotalW">$0.00</td><td></td></tr>
+              <tr><td colspan="2">Weight total</td><td class="pricecell" id="weightTotalW">$0.00</td><td></td></tr>
+              <tr><td colspan="2">Grand total</td><td class="pricecell" id="grandTotalW">$0.00</td><td></td></tr>
+            </tfoot>
+          </table>
+          <div class="sticky-bottom" style="margin-top:6px">
+            <div class="row" style="justify-content:space-between;gap:8px">
+              <button id="clearOrderW" class="btn danger">Clear</button>
+              <div class="row" style="gap:8px">
+                <button id="printLastW" class="btn" disabled>Receipt</button>
+                <button id="saveOrderW" class="btn success">Save Order</button>
+              </div>
+            </div>
+            <p class="hint" id="saveHintW"></p>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Wizard nav (phones landscape) -->
+    <div id="wizardNav" class="row">
+      <button id="stepPrev" class="btn">Back</button>
+      <div class="dots">
+        <span class="dot" id="d0"></span><span class="dot" id="d1"></span><span class="dot" id="d2"></span>
+      </div>
+      <button id="stepNext" class="btn primary" disabled>Next</button>
+    </div>
+
+  </div> <!-- /wrap -->
+
+  <!-- Floating pencil (back to materials in regular layout) -->
+  <button id="editFab" class="fab" aria-label="Back to materials" title="Back to materials"><span>✎</span></button>
+
+  <!-- Prices Modal -->
+  <dialog id="pricesModal" style="border:0;padding:0;border-radius:16px;background:var(--card);color:var(--ink);width:min(720px,92vw)">
+    <div class="card" style="border:0">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <h3 style="margin:0">Edit Prices ($/lb)</h3>
+        <button class="btn" onclick="pricesModal.close()">✕</button>
+      </div>
+      <div id="priceGrid" class="row" style="flex-direction:column"></div>
+      <div class="row" style="justify-content:space-between;margin-top:10px;align-items:center">
+        <span id="priceSyncState" class="pill">Cloud prices: local only</span>
+        <div>
+          <button class="btn" id="refreshPrices">Refresh</button>
+          <button class="btn primary" id="savePrices">Save</button>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Code Modal -->
+  <dialog id="barcodeModal" style="border:0;padding:0;border-radius:16px;background:var(--card);color:var(--ink);width:min(560px,96vw)">
+    <div class="card" style="border:0">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <h3 style="margin:0">Order Code</h3>
+        <div class="row">
+          <button id="shareBar" class="btn">Share</button>
+          <button id="printBar" class="btn">Print</button>
+          <button class="btn" onclick="barcodeModal.close()">✕</button>
+        </div>
+      </div>
+      <div class="center" style="width:100%">
+        <canvas id="qrCanvas" style="width:100%;max-width:320px;height:auto"></canvas>
+        <svg id="barcodeSVG" style="width:100%;max-width:520px;height:auto;display:none"></svg>
+      </div>
+      <div class="hint" id="barcodeHint" style="margin-top:8px;word-break:break-all"></div>
+    </div>
+  </dialog>
+
+  <!-- Orders Modal -->
+  <dialog id="ordersModal" style="border:0;padding:0;border-radius:16px;background:var(--card);color:var(--ink);width:min(720px,96vw)">
+    <div class="card" style="border:0">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <h3 style="margin:0">Saved Orders</h3>
+        <div class="row" style="gap:8px;align-items:center">
+          <button class="btn" onclick="ordersModal.close()">✕</button>
+        </div>
+      </div>
+      <div id="ordersList"></div>
+    </div>
+  </dialog>
+
+  <!-- Scanner Modal -->
+  <dialog id="scanModal" style="border:0;padding:0;border-radius:16px;background:var(--card);color:var(--ink);width:min(720px,96vw)">
+    <div class="card" style="border:0">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <h3 style="margin:0">Scan Code</h3>
+        <button class="btn" onclick="stopScan();scanModal.close()">✕</button>
+      </div>
+      <video id="video" playsinline></video>
+      <div class="row" style="justify-content:space-between;margin-top:6px">
+        <span class="pill" id="camState">Camera: idle</span>
+        <button id="startCam" class="btn primary">Start</button>
+      </div>
+      <div id="scanResult" class="hint" style="margin-top:8px">Point camera at QR or barcode.</div>
+      <div id="scanOrder" style="display:none"></div>
+    </div>
+  </dialog>
+</div>
+
 <script>
+/* ------ Helpers ------ */
+const $ = (q)=>document.querySelector(q);
+const on = (sel, evt, fn)=>{ const el=$(sel); if(el) el.addEventListener(evt, fn, {passive:true}); };
+const set = (sel, text)=>{ const el=$(sel); if(el) el.textContent = text; };
+const show = (sel, yes=true)=>{ const el=$(sel); if(!el) return; el.classList.toggle('hidden', !yes); };
+const money = (n)=> (isNaN(n)?0:n).toLocaleString(undefined,{style:'currency',currency:'USD'});
+const isLandscapePhone = ()=> window.matchMedia('(orientation:landscape) and (max-height: 480px)').matches;
+
+/* Theme toggle */
+(function(){
+  const saved = localStorage.getItem('sr_theme')||'';
+  if(saved==='light') document.documentElement.setAttribute('data-theme','light');
+  on('#themeBtn','click', ()=>{
+    const isLight = document.documentElement.getAttribute('data-theme')==='light';
+    document.documentElement.setAttribute('data-theme', isLight?'':'light');
+    localStorage.setItem('sr_theme', isLight?'dark':'light');
+  });
+})();
+
+/* Icons & Materials */
+const icons={can:`<svg viewBox='0 0 64 64' fill='none'><rect x='18' y='4' width='28' height='56' rx='6' stroke='#7dd3fc' stroke-width='3'/><rect x='22' y='10' width='20' height='44' rx='3' fill='#1a2744'/></svg>`,bottle:`<svg viewBox='0 0 64 64' fill='none'><path d='M28 6h8v8a8 8 0 0 1 4 7v30a8 8 0 0 1-8 8h0a8 8 0 0 1-8-8V21a8 8 0 0 1 4-7V6z' stroke='#7dd3fc' stroke-width='3' fill='#1a2744'/></svg>`,jug:`<svg viewBox='0 0 64 64' fill='none'><path d='M20 14h16l8 8v28a8 8 0 0 1-8 8H24a8 8 0 0 1-8-8V22a8 8 0 0 1 4-8z' stroke='#7dd3fc' stroke-width='3' fill='#1a2744'/><rect x='36' y='18' width='10' height='8' rx='2' stroke='#7dd3fc' stroke-width='3'/></svg>`,glass:`<svg viewBox='0 0 64 64' fill='none'><path d='M16 6h32l-6 40a10 10 0 0 1-10 8h0a10 10 0 0 1-10-8L16 6z' stroke='#7dd3fc' stroke-width='3' fill='#1a2744'/></svg>`,steel:`<svg viewBox='0 0 64 64' fill='none'><rect x='14' y='10' width='36' height='48' rx='6' stroke='#7dd3fc' stroke-width='3'/><path d='M18 22h28M18 30h28M18 38h28' stroke='#7dd3fc' stroke-width='2'/></svg>`,cup:`<svg viewBox='0 0 64 64' fill='none'><path d='M14 10h36l-6 36a10 10 0 0 1-10 8h0a10 10 0 0 1-10-8L14 10z' stroke='#7dd3fc' stroke-width='3' fill='#1a2744'/></svg>`,seven:`<svg viewBox='0 0 64 64' fill='none'><polygon points='8,12 56,12 28,56 12,56' stroke='#7dd3fc' stroke-width='3' fill='none'/><text x='28' y='40' fill='#7dd3fc' font-size='24' text-anchor='middle' font-family='monospace'>7</text></svg>`,pouch:`<svg viewBox='0 0 64 64' fill='none'><path d='M20 10h24l6 10v28l-6 6H20l-6-6V20l6-10z' stroke='#7dd3fc' stroke-width='3' fill='#1a2744'/></svg>`,baginbox:`<svg viewBox='0 0 64 64' fill='none'><rect x='10' y='12' width='44' height='40' rx='6' stroke='#7dd3fc' stroke-width='3' fill='none'/><circle cx='46' cy='44' r='6' stroke='#7dd3fc' stroke-width='3'/><path d='M44 44h4' stroke='#7dd3fc' stroke-width='3'/></svg>`,carton:`<svg viewBox='0 0 64 64' fill='none'><path d='M22 12h20l6 10v28a6 6 0 0 1-6 6H22a6 6 0 0 1-6-6V22l6-10z' stroke='#7dd3fc' stroke-width='3' fill='#1a2744'/><path d='M42 12l6 10H22' stroke='#7dd3fc' stroke-width='2'/><path d='M44 18c6 2 8 2 10 2' stroke='#7dd3fc' stroke-width='2'/></svg>`};
+const materials={ALUMINUM:{label:'Aluminum',unit:'lb',icon:icons.can},GLASS:{label:'Glass',unit:'lb',icon:icons.glass},PET1:{label:'#1 PET',unit:'lb',icon:icons.bottle},HDPE2:{label:'#2 HDPE',unit:'lb',icon:icons.jug},PVC3:{label:'#3 PVC',unit:'lb',icon:icons.bottle},LDPE4:{label:'#4 LDPE',unit:'lb',icon:icons.bottle},PP5:{label:'#5 PP',unit:'lb',icon:icons.cup},PS6:{label:'#6 PS',unit:'lb',icon:icons.cup},OTHER7:{label:'#7 Other Plastic',unit:'lb',icon:icons.seven},BIMETAL:{label:'Bi-metal',unit:'lb',icon:icons.steel},Pouch:{label:'Multi-Layer Pouch',unit:'lb',icon:icons.pouch},BagInBox:{label:'Bag-in-Box (wine)',unit:'lb',icon:icons.baginbox},JuiceBox:{label:'Paperboard Carton (BeatBox)',unit:'ea',icon:icons.carton}};
+let prices = JSON.parse(localStorage.getItem('sr_prices')||'null') || {ALUMINUM:1.65,GLASS:0.102,PET1:1.47,HDPE2:0.63,PVC3:0.48,LDPE4:0.98,PP5:0.55,PS6:0.31,OTHER7:0.41,BIMETAL:0.825,Pouch:0.41,BagInBox:3.79,JuiceBox_each:0.25};
+let selectedMat=null; const order=[];
+
+/* Build material grids (both layouts) */
+(function(){
+  const build=(gridId)=>{ const g=$(gridId); if(!g) return; g.innerHTML=''; Object.entries(materials).forEach(([k,v])=>{const b=document.createElement('button'); b.className='mat-btn'; b.innerHTML=`${v.icon}<span>${v.label}</span>`; b.addEventListener('click',()=>onMaterial(k)); g.appendChild(b);}); };
+  build('#matGrid'); build('#matGridW');
+})();
+
+/* Mode & panels (regular) */
+function isCount(){ return $('#cntMode')?.checked; }
+function updatePanels(){ if(!$('#countBox')) return; $('#countBox').style.display=isCount()?'block':'none'; $('#weightBox').style.display=isCount()?'none':'block'; }
+on('#cntMode','change',()=>{ updatePanels(); restoreGrid(); });
+updatePanels();
+
+/* Mode & panels (wizard) */
+function isCountW(){ return $('#cntModeW')?.checked; }
+function updatePanelsW(){ $('#countBoxW').style.display=isCountW()?'block':'none'; $('#weightBoxW').style.display=isCountW()?'none':'block'; validateStep(); }
+on('#cntModeW','change',()=>{ updatePanelsW(); selectedMat=null; set('#pickedHintW','Enter value then choose.'); hideChoiceW(); });
+updatePanelsW();
+
+/* Auto-clear inputs */
+function autoPrep(sel){ const el=$(sel); if(!el) return; if(el.value==='0'||el.value==='0.00') el.value=''; el.select?.(); }
+function autoRestore(sel){ const el=$(sel); if(!el) return; if(!el.value) el.value='0'; }
+['#pounds','#qty','#poundsW','#qtyW'].forEach(id=>{
+  on(id,'focus', ()=>autoPrep(id));
+  on(id,'blur',  ()=>autoRestore(id));
+});
+
+/* Material click → choice buttons (both layouts) */
+function onMaterial(key){
+  selectedMat=key; set('#chosenMatLabel','Material: '+materials[key].label); set('#chosenMatLabelW','Material: '+materials[key].label);
+  const isW = isLandscapePhone();
+  const p = isW ? $('#choicePanelW') : $('#choicePanel'); p.innerHTML='';
+  const grid = isW ? $('#matGridW') : $('#matGrid');
+  const showPanel = ()=>{ grid.style.display='none'; p.style.display='flex'; $('#editFab').style.display = isW ? 'none' : 'flex'; };
+
+  if((isW ? isCountW() : isCount())){
+    const qty=+((isW?$('#qtyW'):$('#qty'))?.value||0); if(!qty){ flashHint('Enter count first'); return; }
+    showPanel();
+    if(key==='BagInBox' || key==='Pouch' || key==='JuiceBox'){
+      p.append(makeBtn('25¢ each',()=>{addCountItem(0.25); restoreGrid(); if(isW) wizardGo(2,true);}));
+    }else{
+      p.append(
+        makeBtn('< 24 oz (5¢)', ()=>{addCountItem(0.05); restoreGrid(); if(isW) wizardGo(2,true);} ),
+        makeBtn('≥ 24 oz (10¢)',()=>{addCountItem(0.10); restoreGrid(); if(isW) wizardGo(2,true);} )
+      );
+    }
+  }else{
+    const lbs=+((isW?$('#poundsW'):$('#pounds'))?.value||0); if(!lbs){ flashHint('Enter weight first'); return; }
+    showPanel();
+    p.append(
+      makeBtn('CRV',()=>{addWeightItem('CRV'); restoreGrid(); if(isW) wizardGo(2,true);} ),
+      makeBtn(key==='ALUMINUM'?'$1.75/lb':'Non-CRV',()=>{addWeightItem(key==='ALUMINUM'?'ALU175':'NON'); restoreGrid(); if(isW) wizardGo(2,true);} )
+    );
+  }
+}
+function makeBtn(txt,fn){ const b=document.createElement('button'); b.className='btn primary'; b.textContent=txt; b.addEventListener('click',fn); return b; }
+function restoreGrid(){ ['#choicePanel','#choicePanelW'].forEach(id=>{ const p=$(id); if(p){ p.style.display='none'; } }); ['#matGrid','#matGridW'].forEach(id=>{ const g=$(id); if(g){ g.style.display='grid'; } }); set('#chosenMatLabel','Material: —'); set('#chosenMatLabelW','Material: —'); selectedMat=null; $('#editFab').style.display='none'; }
+function hideChoiceW(){ const p=$('#choicePanelW'); if(p){ p.style.display='none'; } const g=$('#matGridW'); if(g){ g.style.display='grid'; } }
+function flashHint(msg){ const el = isLandscapePhone() ? $('#pickedHintW') : $('#pickedHint'); if(!el) return; const prev=el.textContent; el.textContent=msg; setTimeout(()=>el.textContent=prev,1200); }
+on('#editFab','click', ()=>{ restoreGrid(); window.scrollTo({top:document.getElementById('materialsCard').offsetTop-20, behavior:'smooth'}); });
+
+/* Previews */
+on('#pounds','input', ()=>{ const lbs=+($('#pounds')?.value||0); const rate=(selectedMat && prices[selectedMat])||0; set('#weightPreview', money(lbs*rate)); });
+on('#qty','input',    ()=>{ const qty=+($('#qty')?.value||0); set('#countPreview', money(qty*0.05)); });
+on('#poundsW','input',()=>{ const lbs=+($('#poundsW')?.value||0); const rate=(selectedMat && prices[selectedMat])||0; set('#weightPreviewW', money(lbs*rate)); validateStep(); });
+on('#qtyW','input',   ()=>{ const qty=+($('#qtyW')?.value||0); set('#countPreviewW', money(qty*0.05)); validateStep(); });
+
+/* Add items (Non-CRV → $0.00 payout) */
+function addWeightItem(kind){
+  if(!selectedMat){ alert('Pick a material below.'); return;}
+  const lbs = isLandscapePhone() ? +($('#poundsW')?.value||0) : +($('#pounds')?.value||0);
+  if(!lbs) return;
+
+  let rate=(prices[selectedMat]||0);
+  let tag='', subtotal=0;
+
+  if(selectedMat==='ALUMINUM' && kind==='ALU175'){
+    rate=1.75; tag='Alu $1.75'; subtotal=lbs*rate;
+  }else if(kind==='CRV'){
+    tag='CRV'; subtotal=lbs*rate;
+  }else{ // NON
+    tag='Non-CRV (no payout)'; subtotal=0;
+  }
+
+  order.push({
+    type:'weight', mat:selectedMat, lbs, unitPrice:rate, payoutKind:kind,
+    subtotal,
+    detail:`${tag} · ${lbs.toFixed(2)} lb × ${money(rate)}/lb${subtotal===0?' — no payout':''}`
+  });
+
+  if(isLandscapePhone()){ $('#poundsW').value='0'; } else { $('#pounds').value='0'; }
+  render();
+}
+function addCountItem(per){
+  if(!selectedMat){ alert('Pick a material below.'); return;}
+  const qty = isLandscapePhone() ? +($('#qtyW')?.value||0) : +($('#qty')?.value||0);
+  if(!qty) return;
+  order.push({type:'crv',mat:selectedMat,qty,unitPrice:per,subtotal:qty*per,detail:`${qty} × ${(per===0.25?'25¢':per===0.10?'10¢':'5¢')}`});
+  if(isLandscapePhone()){ $('#qtyW').value='0'; } else { $('#qty').value='0'; }
+  render();
+}
+
+/* Render order */
+function render(){
+  const fill = (tbSel, crvSel, wtSel, grandSel, printBtnSel)=>{
+    const tb=$(tbSel); if(!tb) return;
+    tb.innerHTML=''; let crv=0,wt=0;
+    order.forEach((it,i)=>{
+      const nm=(materials[it.mat]||{label:it.mat}).label;
+      const tr=document.createElement('tr');
+      tr.innerHTML=`<td>${nm}</td><td>${it.detail}</td><td class="pricecell">${money(it.subtotal)}</td><td><button class='btn' data-i='${i}'>✕</button></td>`;
+      tb.appendChild(tr);
+      if(it.type==='weight') wt+=it.subtotal; else crv+=it.subtotal;
+    });
+    set(crvSel, money(crv));
+    set(wtSel, money(wt));
+    set(grandSel, money(crv+wt));
+    tb.querySelectorAll('button[data-i]').forEach(b=>b.addEventListener('click',()=>{order.splice(+b.dataset.i,1); render();}));
+    const printBtn=$(printBtnSel); if(printBtn) printBtn.disabled = order.length===0;
+  };
+  fill('#orderTable tbody','#crvTotal','#weightTotal','#grandTotal','#printLast');
+  fill('#orderTableW tbody','#crvTotalW','#weightTotalW','#grandTotalW','#printLastW');
+}
+on('#clearOrder','click',()=>{ order.splice(0,order.length); render(); });
+on('#clearOrderW','click',()=>{ order.splice(0,order.length); render(); });
+
+/* ----- Landscape Wizard Logic ----- */
+let step=0; // 0 enter, 1 materials, 2 order
+function syncLayoutsVisibility(){
+  const isW = isLandscapePhone();
+  show('#regularLayout', !isW);
+  show('#wizardLayout', isW);
+  show('#wizardNav', isW);
+  if(isW) wizardGo(step,false);
+}
+function validateStep(){
+  if(!isLandscapePhone()) return;
+  const valid = isCountW() ? (+($('#qtyW')?.value||0) > 0) : (+($('#poundsW')?.value||0) > 0);
+  const nextBtn = $('#stepNext');
+  if(step===0){ nextBtn.disabled = !valid; }
+  if(step===1){ nextBtn.disabled = (order.length===0); }
+  if(step===2){ nextBtn.textContent='New Item'; nextBtn.disabled=false; }
+}
+function updateDots(){ ['#d0','#d1','#d2'].forEach((id,i)=>{ const el=$(id); if(el){ el.classList.toggle('active', i===step); } }); }
+function scrollToPanel(i){ ['#panelEnter','#panelMaterials','#panelOrder'][i] && $(['#panelEnter','#panelMaterials','#panelOrder'][i]).scrollIntoView({behavior:'smooth',block:'start'}); }
+function wizardGo(i, fromAuto=false){
+  step = Math.max(0, Math.min(2, i));
+  updateDots(); validateStep();
+  const nextBtn = $('#stepNext');
+  if(step===0){ nextBtn.textContent='Next'; }
+  if(step===1){ nextBtn.textContent='Next'; nextBtn.disabled=(order.length===0); }
+  if(step===2){ nextBtn.textContent='New Item'; nextBtn.disabled=false; }
+  scrollToPanel(step);
+}
+on('#stepPrev','click', ()=>{ wizardGo(step-1,false); });
+on('#stepNext','click', ()=>{
+  if(step===2){ wizardGo(0,false); return; }
+  wizardGo(step+1,false);
+});
+window.addEventListener('resize', syncLayoutsVisibility);
+window.addEventListener('orientationchange', ()=> setTimeout(syncLayoutsVisibility, 200));
+syncLayoutsVisibility();
+
+/* ---------- Firebase (baked config) ---------- */
+const fbCfg = {
+  apiKey:"AIzaSyCSRYYjuJyO6_N2n9RaA8T2fXRaHiC3q6o",
+  authDomain:"recycle-cb24b.firebaseapp.com",
+  projectId:"recycle-cb24b",
+  storageBucket:"recycle-cb24b.appspot.com",
+  messagingSenderId:"281209650356",
+  appId:"1:281209650356:web:a3b55a3b4d7ce5e642abe1",
+  measurementId:"G-4DFFS1RH83"
+};
+let auth=null, db=null;
+async function initFirebase(){
+  try{
+    const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js');
+    const { getFirestore, doc, setDoc, getDoc, collection, getDocs, query, orderBy, deleteDoc, enableIndexedDbPersistence } =
+      await import('https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js');
+    const { getAuth, onAuthStateChanged, setPersistence, browserLocalPersistence, signInWithEmailAndPassword, signOut } =
+      await import('https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js');
+
+    const app = initializeApp(fbCfg);
+    auth = getAuth(app);
+    await setPersistence(auth, browserLocalPersistence);
+
+    db = getFirestore(app);
+    enableIndexedDbPersistence(db).catch(()=>{});
+
+    window.cloud = {
+      async saveOrder(o){ return setDoc(doc(db,'orders',o.id), o); },
+      async getOrder(id){ const s=await getDoc(doc(db,'orders',id)); return s.exists()? s.data(): null; },
+      async listOrders(){ const qy=query(collection(db,'orders'), orderBy('when','desc')); const s=await getDocs(qy); return s.docs.map(d=>d.data()); },
+      async clearAll(){ const s=await getDocs(collection(db,'orders')); await Promise.all(s.docs.map(d=>deleteDoc(d.ref))); },
+      async getPrices(){ const s=await getDoc(doc(db,'settings','prices')); return s.exists()? s.data(): null; },
+      async setPrices(map){ return setDoc(doc(db,'settings','prices'), { map, updatedAt: new Date().toISOString() }); }
+    };
+
+    window.__signin  = (email,pass)=>signInWithEmailAndPassword(auth,email,pass);
+    window.__signout = ()=>signOut(auth);
+
+    onAuthStateChanged(auth,(user)=>{
+      if(user){
+        set('#cloudStatus','Cloud: connected');
+        set('#staffStatus',`Staff: ${user.email||user.uid}`);
+        show('#authScreen',false); show('#appShell',true);
+      }else{
+        set('#cloudStatus','Cloud: sign in required');
+        show('#appShell',false); show('#authScreen',true);
+      }
+    });
+
+    window.cloudReady = true;
+    set('#cloudState','Cloud: ready');
+  }catch(e){
+    console.error('Firebase init error:', e);
+    set('#cloudState','Cloud error: '+(e.message||e));
+    window.cloudReady = false;
+  }
+}
+initFirebase();
+
+/* Login / Logout */
+on('#authLogin','click', async ()=>{
+  const email = $('#authEmail')?.value.trim();
+  const pass  = $('#authPass')?.value.trim();
+  if(!email || !pass){ set('#authHint','Enter email and password'); return; }
+  try{ set('#authHint','Signing in…'); await window.__signin(email,pass); set('#authHint','Signed in. Loading…'); }catch(e){ const code=e?.code||''; const map={'auth/invalid-email':'Invalid email.','auth/user-not-found':'No user with that email.','auth/wrong-password':'Wrong password.','auth/invalid-credential':'Invalid credentials.','auth/network-request-failed':'Network error.'}; set('#authHint',map[code]||('Login failed: '+code)); }
+});
+on('#logoutBtn','click', async ()=>{ try{ await window.__signout(); }catch{} });
+
+/* Save order (shared) */
+let __lastSavedOrder = null;
+function currentTotals(){
+  return {
+    crv:   ($('#crvTotal').textContent   || $('#crvTotalW')?.textContent   || '$0.00'),
+    weight:($('#weightTotal').textContent|| $('#weightTotalW')?.textContent|| '$0.00'),
+    grand: ($('#grandTotal').textContent || $('#grandTotalW')?.textContent || '$0.00'),
+  };
+}
+on('#printLast', ()=>{ if(__lastSavedOrder) printReceipt(__lastSavedOrder); else alert('Save an order first.'); });
+on('#printLastW',()=>{ if(__lastSavedOrder) printReceipt(__lastSavedOrder); else alert('Save an order first.'); });
+
+async function saveOrderCommon(hintSel, printSel){
+  set(hintSel,'');
+  if(!order.length){ set(hintSel,'Add some items first.'); return; }
+  if(!window.cloudReady || !window.cloud || !db){ set(hintSel,'Cloud not ready. Try again in a moment.'); return; }
+  if(!auth || !auth.currentUser){ set(hintSel,'Please sign in first.'); return; }
+
+  const payload={ id:'SR-'+Date.now(), when:new Date().toISOString(), barcodeVerified:true, items:[...order], totals: currentTotals() };
+  try{
+    await window.cloud.saveOrder(payload);
+    __lastSavedOrder = payload;
+    const pb=document.querySelector(printSel); if(pb) pb.disabled=false;
+    order.splice(0,order.length); render();
+    set(hintSel,'Saved to cloud ✔'); if('vibrate' in navigator) navigator.vibrate?.(10);
+    setTimeout(()=>set(hintSel,''),1400);
+  }catch(e){
+    console.error('Save failed:', e);
+    set(hintSel,'Save failed: '+(e?.code||e?.message||String(e)));
+  }
+}
+on('#saveOrder',  ()=> saveOrderCommon('#saveHint','#printLast'));
+on('#saveOrderW', ()=> saveOrderCommon('#saveHintW','#printLastW'));
+
+/* Prices modal */
+on('#openPrices','click', ()=>{ buildPricesForm(); $('#pricesModal').showModal(); });
+function buildPricesForm(){
+  const grid=$('#priceGrid'); grid.innerHTML='';
+  Object.keys(materials).forEach(k=>{
+    if(materials[k].unit==='ea') return;
+    const row=document.createElement('div'); row.className='row'; row.style.flexDirection='column';
+    row.innerHTML=`<label>${materials[k].label}</label><input type='number' step='0.001' id='p_${k}' value='${prices[k]??''}' placeholder='$/lb'>`;
+    grid.appendChild(row);
+  });
+  const jb=document.createElement('div'); jb.className='row'; jb.style.flexDirection='column';
+  jb.innerHTML=`<label>Paperboard Carton (BeatBox) – price each</label><input type='number' step='0.01' id='p_JuiceBox_each' value='${prices.JuiceBox_each??0.25}' placeholder='$/ea'>`;
+  grid.appendChild(jb);
+  set('#priceSyncState', window.cloud?'Cloud prices: connected':'Cloud prices: local only');
+}
+on('#refreshPrices','click', async ()=>{ try{ const doc=await window.cloud.getPrices(); if(doc?.map){ prices={...prices,...doc.map}; localStorage.setItem('sr_prices',JSON.stringify(prices)); buildPricesForm(); } }catch{} });
+on('#savePrices','click', async ()=>{
+  const next={};
+  Object.keys(materials).forEach(k=>{ if(materials[k].unit==='lb'){ next[k]=+(($('#p_'+k)||{}).value||0)||0; } });
+  next.JuiceBox_each=+(($('#p_JuiceBox_each')||{}).value||0.25)||0.25;
+  prices={...prices,...next};
+  localStorage.setItem('sr_prices',JSON.stringify(prices));
+  try{ await window.cloud.setPrices(prices);}catch{}
+  $('#pricesModal').close();
+});
+
+/* Orders modal */
+on('#viewOrders','click', async ()=>{
+  const list=$('#ordersList'); list.innerHTML='';
+  try{
+    const all=await window.cloud.listOrders();
+    if(!all.length){ list.innerHTML='<div class="hint">No orders yet.</div>'; ordersModal.showModal(); return; }
+    all.forEach(o=>{
+      const div=document.createElement('div'); div.className='card';
+      const header=document.createElement('div'); header.className='row'; header.style.justifyContent='space-between'; header.style.alignItems='center';
+      const left=document.createElement('b'); left.textContent=o.id;
+      const btn=document.createElement('button'); btn.className='btn primary'; btn.textContent='Code'; btn.addEventListener('click',()=>showBarcode(o.id));
+      const rbtn=document.createElement('button'); rbtn.className='btn'; rbtn.textContent='Receipt'; rbtn.style.marginLeft='6px'; rbtn.addEventListener('click',()=>printReceiptById(o.id));
+      const right=document.createElement('span'); right.className='hint'; right.textContent=new Date(o.when).toLocaleString()+` · Barcode: ${o.barcodeVerified?'✔':'✕'}`;
+      header.append(left,btn,rbtn,right);
+      const ul=document.createElement('ul'); ul.innerHTML=(o.items||[]).map(it=>`<li>${(materials[it.mat]||{label:it.mat}).label} — ${it.detail} <b>${money(it.subtotal)}</b></li>`).join('');
+      const totals=document.createElement('div'); totals.className='row'; totals.style.justifyContent='flex-end'; totals.style.gap='16px'; totals.innerHTML=`<span>CRV: <b>${o.totals?.crv||'$0.00'}</b></span><span>Weight: <b>${o.totals?.weight||'$0.00'}</b></span><span>Grand: <b>${o.totals?.grand||'$0.00'}</b></span>`;
+      div.append(header,ul,totals); list.appendChild(div);
+    });
+    ordersModal.showModal();
+  }catch(e){ list.innerHTML='<div class="hint">Cloud read failed (check rules/login).</div>'; ordersModal.showModal(); }
+});
+
+/* Code modal: theme-aware QR + fallback Code128 */
+function codeColors(){
+  const isLight = document.documentElement.getAttribute('data-theme')==='light';
+  return isLight
+    ? { dark:'#111111', light:'#ffffff', line:'#111111', bg:'transparent' }
+    : { dark:'#ffffff', light:'#0f1730', line:'#e5efff', bg:'transparent' };
+}
+function showBarcode(text){
+  set('#barcodeHint', text);
+  const cc = codeColors();
+  try{
+    const canvas = $('#qrCanvas');
+    QRCode.toCanvas(canvas, text, { width: 320, margin: 1, color:{ dark: cc.dark, light: cc.light } }, function(err){
+      if(err) console.warn('QR error', err);
+    });
+  }catch(e){ console.warn('QR lib error', e); }
+  try{
+    JsBarcode('#barcodeSVG', text, {format:'CODE128', lineColor: cc.line, background: cc.bg, width:2, height:120, margin:10, displayValue:true, fontSize:18});
+  }catch(e){}
+  $('#barcodeModal').showModal();
+}
+on('#shareBar','click', async ()=>{
+  const canvas=$('#qrCanvas');
+  try{
+    const data=canvas.toDataURL('image/png');
+    if(navigator.share && navigator.canShare){
+      const r=await fetch(data); const blob=await r.blob();
+      const file=new File([blob],'order.png',{type:'image/png'});
+      if(navigator.canShare({files:[file]})){ await navigator.share({files:[file], title:'Order Code'}); return; }
+    }
+    window.open(data,'_blank');
+  }catch(e){ window.open(canvas.toDataURL('image/png'),'_blank'); }
+});
+on('#printBar','click', ()=>{
+  const canvas=$('#qrCanvas');
+  const w=window.open('','print');
+  const html=`<html><head><title>Code</title></head><body style='margin:0;padding:20px;text-align:center;background:#fff'><img src='${canvas.toDataURL('image/png')}' style='max-width:320px;width:100%'><script>window.onload=()=>{window.print();setTimeout(()=>window.close(),300);}</`+'script></body></html>`;
+  w.document.write(html); w.document.close();
+});
+
+/* Universal Scanner (ZXing) */
+let stream=null, codeReader=null;
+on('#scanBtn','click', ()=>{
+  set('#scanResult','Point camera at QR or barcode.');
+  $('#scanOrder').style.display='none';
+  $('#scanModal').showModal();
+});
+async function startScan(){
+  try{
+    const constraints = { video: { facingMode: { ideal: 'environment' } } };
+    set('#camState','Camera: starting…');
+    stream = await navigator.mediaDevices.getUserMedia(constraints);
+    const v=$('#video'); v.srcObject=stream; await v.play();
+    set('#camState','Camera: on ✔');
+    codeReader = new ZXing.BrowserMultiFormatReader();
+    await codeReader.decodeFromVideoDevice(null, v, async (result, err)=>{
+      if(result){
+        const val = result.getText ? result.getText() : (result.text || '');
+        if(val){ await onScan(val); }
+      }
+    });
+  }catch(e){ set('#camState','Camera: error'); alert(e.message||e); }
+}
+function stopScan(){ try{ if(codeReader){ codeReader.reset(); codeReader=null; } if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; } set('#camState','Camera: idle'); }catch(e){} }
+on('#startCam','click', ()=>{ if(stream){ stopScan(); } else { startScan(); } });
+async function onScan(val){
+  if(!val) return;
+  stopScan();
+  set('#scanResult','Scanned: '+val);
+  let o=null; try{ o=await window.cloud.getOrder(val);}catch{}
+  if(o){
+    const rows=(o.items||[]).map(it=>`<li>${(materials[it.mat]||{label:it.mat}).label} — ${it.detail} <b>${money(it.subtotal)}</b></li>`).join('');
+    $('#scanOrder').style.display='block';
+    $('#scanOrder').innerHTML=`<h3 style='margin:10px 0'>${o.id}</h3>
+      <div class='hint'>${new Date(o.when).toLocaleString()}</div>
+      <ul>${rows}</ul>
+      <div class='row' style='justify-content:flex-end;gap:16px'>
+        <span>CRV: <b>${o.totals?.crv||'$0.00'}</b></span>
+        <span>Weight: <b>${o.totals?.weight||'$0.00'}</b></span>
+        <span>Grand: <b>${o.totals?.grand||'$0.00'}</b></span>
+      </div>
+      <div class='row' style='justify-content:center;margin-top:10px'>
+        <button class='btn' onclick='(${startScan.toString()})();'>Scan Again</button>
+      </div>`;
+  } else {
+    $('#scanOrder').style.display='block';
+    $('#scanOrder').innerHTML = "<div class='hint'>No match found in cloud.</div>";
+  }
+}
+
+/* ----- Receipt Printing (single GRAND TOTAL; no per-line prices) ----- */
 function buildReceiptHTML(order){
   const items = (order.items||[]);
   const lines = items.map(it=>{
@@ -52,4 +837,11 @@ function buildReceiptHTML(order){
     <\/script>
   </body></html>`;
 }
+async function printReceipt(order){ if(!order){ alert('No order to print'); return; } const w=window.open('','receipt'); w.document.write(buildReceiptHTML(order)); w.document.close(); }
+async function printReceiptById(id){ try{ const o=await window.cloud.getOrder(id); if(!o){ alert('Order not found'); return; } printReceipt(o); }catch(e){ alert('Could not load order'); } }
+
+/* Firestore rules nudge */
+window.addEventListener('load', ()=> setTimeout(async ()=>{ try{ if(!auth?.currentUser||!db) return; const { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js'); await getDoc(doc(db,'settings','prices')); }catch(e){ set('#cloudStatus','Cloud: permission denied (check rules email)'); } }, 1200));
 </script>
+</body>
+</html>
