@@ -58,9 +58,9 @@
   video{width:100%; border-radius:16px; background:#000}
   @media (max-width:420px){ header .row{gap:6px} .btn{padding:10px 12px} .grid{grid-template-columns:repeat(3,1fr)} }
 
-  /* iPhone 15 Pro Max specific tuning (portrait & landscape) */
+  /* iPhone 15 Pro Max specific (portrait) */
   @supports (-webkit-touch-callout: none) {
-    @media screen and (device-width:430px) and (device-height:932px) and (-webkit-device-pixel-ratio:3) {
+    @media screen and (device-width:430px) and (device-height:932px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait) {
       .wrap{padding:12px}
       .btn{padding:14px 16px}
       .grid{grid-template-columns:repeat(4,1fr)}
@@ -68,12 +68,32 @@
       header .row{gap:6px}
       body{padding-bottom:calc(env(safe-area-inset-bottom) + 8px)}
     }
+    /* iPhone 15 Pro Max (LANDSCAPE): more columns, tighter spacing */
+    @media screen and (device-width:932px) and (device-height:430px) and (-webkit-device-pixel-ratio:3) and (orientation:landscape) {
+      .wrap{max-width:1200px;padding:10px}
+      .grid{grid-template-columns:repeat(5,1fr); gap:8px}
+      .mat-btn{min-height:96px}
+      .card{padding:10px}
+      header .row{gap:6px;flex-wrap:nowrap}
+      table th, table td{padding:8px}
+    }
+  }
+
+  /* Generic phones in LANDSCAPE */
+  @media (orientation:landscape) and (max-height:480px){
+    .wrap{max-width:1200px;padding:10px}
+    .grid{grid-template-columns:repeat(5,1fr); gap:8px}
+    .mat-btn{min-height:96px}
+    .card{padding:10px}
+    table th, table td{padding:8px}
   }
 </style>
-<!-- Code128 (fallback) -->
+<!-- Fallback Code128 -->
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
-<!-- QR (primary for iOS reliability) -->
+<!-- QR (primary for display) -->
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<!-- ZXing (universal scanner) -->
+<script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js"></script>
 </head>
 <body>
 
@@ -125,13 +145,13 @@
 
         <div id="weightBox" class="card" style="margin-top:10px">
           <label for="pounds">Weight (lb)</label>
-          <input id="pounds" type="number" step="0.01" inputmode="decimal" min="0" value="0">
+          <input id="pounds" type="number" step="0.01" inputmode="decimal" min="0" value="0" enterkeyhint="done">
           <div class="hint" id="weightPreview">$0.00</div>
         </div>
 
         <div id="countBox" class="card" style="margin-top:10px;display:none">
           <label for="qty">Count (auto-CRV / special)</label>
-          <input id="qty" type="number" inputmode="numeric" pattern="[0-9]*" value="0" min="0">
+          <input id="qty" type="number" inputmode="numeric" pattern="[0-9]*" value="0" min="0" enterkeyhint="done">
           <div class="hint" id="countPreview">$0.00</div>
         </div>
 
@@ -202,7 +222,7 @@
     </div>
   </dialog>
 
-  <!-- Barcode Modal -->
+  <!-- Code Modal (QR + fallback Code128) -->
   <dialog id="barcodeModal" style="border:0;padding:0;border-radius:16px;background:var(--card);color:var(--ink);width:min(560px,96vw)">
     <div class="card" style="border:0">
       <div class="row" style="justify-content:space-between;align-items:center">
@@ -243,33 +263,11 @@
       </div>
       <video id="video" playsinline></video>
       <div class="row" style="justify-content:space-between;margin-top:6px">
-        <span class="pill" id="apiState">API: checking…</span>
         <span class="pill" id="camState">Camera: idle</span>
         <button id="startCam" class="btn primary">Start</button>
       </div>
       <div id="scanResult" class="hint" style="margin-top:8px">Point camera at QR or barcode.</div>
       <div id="scanOrder" style="display:none"></div>
-    </div>
-  </dialog>
-
-  <!-- API Diagnostics Modal (hidden entry) -->
-  <dialog id="apiModal" style="border:0;padding:0;border-radius:16px;background:var(--card);color:var(--ink);width:min(720px,96vw)">
-    <div class="card" style="border:0">
-      <div class="row" style="justify-content:space-between;align-items:center">
-        <h3 style="margin:0">Cloud Diagnostics</h3>
-        <button class="btn" onclick="apiModal.close()">✕</button>
-      </div>
-      <div class="row" style="flex-direction:column;gap:6px">
-        <div class="pill" id="diagSdk">SDK: pending…</div>
-        <div class="pill" id="diagApp">App: pending…</div>
-        <div class="pill" id="diagAuth">Auth: pending…</div>
-        <div class="pill" id="diagFS">Firestore: pending…</div>
-        <div class="pill" id="diagRules">Rules check: pending…</div>
-      </div>
-      <div style="margin-top:8px">
-        <button id="runChecks" class="btn primary">Run Checks</button>
-      </div>
-      <pre id="diagLog" style="white-space:pre-wrap;background:color-mix(in oklab, var(--card) 90%, #0e1b30 20%);border:1px solid #22314f33;border-radius:12px;padding:10px;margin-top:10px;max-height:40vh;overflow:auto"></pre>
     </div>
   </dialog>
 </div>
@@ -282,7 +280,7 @@ const set = (sel, text)=>{ const el=$(sel); if(el) el.textContent = text; };
 const show = (sel, yes=true)=>{ const el=$(sel); if(!el) return; el.classList.toggle('hidden', !yes); };
 const money = (n)=> (isNaN(n)?0:n).toLocaleString(undefined,{style:'currency',currency:'USD'});
 
-/* Icons & Materials */
+/* Icons & Materials (same as before) */
 const icons={can:`<svg viewBox='0 0 64 64' fill='none'><rect x='18' y='4' width='28' height='56' rx='6' stroke='#7dd3fc' stroke-width='3'/><rect x='22' y='10' width='20' height='44' rx='3' fill='#1a2744'/></svg>`,bottle:`<svg viewBox='0 0 64 64' fill='none'><path d='M28 6h8v8a8 8 0 0 1 4 7v30a8 8 0 0 1-8 8h0a8 8 0 0 1-8-8V21a8 8 0 0 1 4-7V6z' stroke='#7dd3fc' stroke-width='3' fill='#1a2744'/></svg>`,jug:`<svg viewBox='0 0 64 64' fill='none'><path d='M20 14h16l8 8v28a8 8 0 0 1-8 8H24a8 8 0 0 1-8-8V22a8 8 0 0 1 4-8z' stroke='#7dd3fc' stroke-width='3' fill='#1a2744'/><rect x='36' y='18' width='10' height='8' rx='2' stroke='#7dd3fc' stroke-width='3'/></svg>`,glass:`<svg viewBox='0 0 64 64' fill='none'><path d='M16 6h32l-6 40a10 10 0 0 1-10 8h0a10 10 0 0 1-10-8L16 6z' stroke='#7dd3fc' stroke-width='3' fill='#1a2744'/></svg>`,steel:`<svg viewBox='0 0 64 64' fill='none'><rect x='14' y='10' width='36' height='48' rx='6' stroke='#7dd3fc' stroke-width='3'/><path d='M18 22h28M18 30h28M18 38h28' stroke='#7dd3fc' stroke-width='2'/></svg>`,cup:`<svg viewBox='0 0 64 64' fill='none'><path d='M14 10h36l-6 36a10 10 0 0 1-10 8h0a10 10 0 0 1-10-8L14 10z' stroke='#7dd3fc' stroke-width='3' fill='#1a2744'/></svg>`,seven:`<svg viewBox='0 0 64 64' fill='none'><polygon points='8,12 56,12 28,56 12,56' stroke='#7dd3fc' stroke-width='3' fill='none'/><text x='28' y='40' fill='#7dd3fc' font-size='24' text-anchor='middle' font-family='monospace'>7</text></svg>`,pouch:`<svg viewBox='0 0 64 64' fill='none'><path d='M20 10h24l6 10v28l-6 6H20l-6-6V20l6-10z' stroke='#7dd3fc' stroke-width='3' fill='#1a2744'/></svg>`,baginbox:`<svg viewBox='0 0 64 64' fill='none'><rect x='10' y='12' width='44' height='40' rx='6' stroke='#7dd3fc' stroke-width='3' fill='none'/><circle cx='46' cy='44' r='6' stroke='#7dd3fc' stroke-width='3'/><path d='M44 44h4' stroke='#7dd3fc' stroke-width='3'/></svg>`,carton:`<svg viewBox='0 0 64 64' fill='none'><path d='M22 12h20l6 10v28a6 6 0 0 1-6 6H22a6 6 0 0 1-6-6V22l6-10z' stroke='#7dd3fc' stroke-width='3' fill='#1a2744'/><path d='M42 12l6 10H22' stroke='#7dd3fc' stroke-width='2'/><path d='M44 18c6 2 8 2 10 2' stroke='#7dd3fc' stroke-width='2'/></svg>`};
 const materials={ALUMINUM:{label:'Aluminum',unit:'lb',icon:icons.can},GLASS:{label:'Glass',unit:'lb',icon:icons.glass},PET1:{label:'#1 PET',unit:'lb',icon:icons.bottle},HDPE2:{label:'#2 HDPE',unit:'lb',icon:icons.jug},PVC3:{label:'#3 PVC',unit:'lb',icon:icons.bottle},LDPE4:{label:'#4 LDPE',unit:'lb',icon:icons.bottle},PP5:{label:'#5 PP',unit:'lb',icon:icons.cup},PS6:{label:'#6 PS',unit:'lb',icon:icons.cup},OTHER7:{label:'#7 Other Plastic',unit:'lb',icon:icons.seven},BIMETAL:{label:'Bi-metal',unit:'lb',icon:icons.steel},Pouch:{label:'Multi-Layer Pouch',unit:'lb',icon:icons.pouch},BagInBox:{label:'Bag-in-Box (wine)',unit:'lb',icon:icons.baginbox},JuiceBox:{label:'Paperboard Carton (BeatBox)',unit:'ea',icon:icons.carton}};
 let prices = JSON.parse(localStorage.getItem('sr_prices')||'null') || {ALUMINUM:1.65,GLASS:0.102,PET1:1.47,HDPE2:0.63,PVC3:0.48,LDPE4:0.98,PP5:0.55,PS6:0.31,OTHER7:0.41,BIMETAL:0.825,Pouch:0.41,BagInBox:3.79,JuiceBox_each:0.25};
@@ -297,6 +295,21 @@ function updatePanels(){ if(!$('#countBox')) return; $('#countBox').style.displa
 on('#cntMode','change',()=>{ updatePanels(); restoreGrid(); });
 updatePanels();
 
+/* Auto-clear inputs */
+function autoPrep(sel){
+  const el=$(sel); if(!el) return;
+  if(el.value==='0' || el.value==='0.00') el.value='';
+  el.select?.();
+}
+function autoRestore(sel){
+  const el=$(sel); if(!el) return;
+  if(!el.value) el.value='0';
+}
+on('#pounds','focus', ()=>autoPrep('#pounds'));
+on('#qty','focus',    ()=>autoPrep('#qty'));
+on('#pounds','blur',  ()=>autoRestore('#pounds'));
+on('#qty','blur',     ()=>autoRestore('#qty'));
+
 /* Material click → choice buttons */
 function onMaterial(key){
   selectedMat=key; set('#chosenMatLabel','Material: '+materials[key].label);
@@ -304,7 +317,7 @@ function onMaterial(key){
   if(isCount()){
     const qty=+($('#qty')?.value||0); if(!qty){ flashHint('Enter count first'); return; }
     $('#matGrid').style.display='none'; p.style.display='flex'; $('#editFab').style.display='flex';
-    // Special 25¢ items: BagInBox, Pouch, JuiceBox (carton)
+    // Special 25¢ items
     if(key==='BagInBox' || key==='Pouch' || key==='JuiceBox'){
       p.append(makeBtn('25¢ each',()=>{addCountItem(0.25);restoreGrid();}));
     }else{
@@ -324,11 +337,11 @@ function flashHint(msg){ const el=$('#pickedHint'); if(!el) return; const prev=e
 
 /* Previews */
 on('#pounds','input',()=>{ const lbs=+($('#pounds')?.value||0); const rate=(selectedMat && prices[selectedMat])||0; set('#weightPreview', money(lbs*rate)); });
-on('#qty','input',()=>{ const qty=+($('#qty')?.value||0); set('#countPreview', money(qty*0.05)); }); // base preview; special 25¢ applies after material pick
+on('#qty','input',   ()=>{ const qty=+($('#qty')?.value||0); set('#countPreview', money(qty*0.05)); }); // base preview
 
 /* Add items */
-function addWeightItem(kind){ if(!selectedMat){ alert('Pick a material below.'); return;} const lbs=+($('#pounds')?.value||0); if(!lbs) return; let rate=(prices[selectedMat]||0); let tag=(kind==='CRV')?'CRV':'Non-CRV'; if(selectedMat==='ALUMINUM'&&kind==='ALU175'){ rate=1.75; tag='Alu $1.75'; } order.push({type:'weight',mat:selectedMat,lbs,unitPrice:rate,subtotal:lbs*rate,detail:`${tag} · ${lbs.toFixed(2)} lb × ${money(rate)}/lb`}); $('#pounds').value=0; render(); }
-function addCountItem(per){ if(!selectedMat){ alert('Pick a material below.'); return;} const qty=+($('#qty')?.value||0); if(!qty) return; order.push({type:'crv',mat:selectedMat,qty,unitPrice:per,subtotal:qty*per,detail:`${qty} × ${(per===0.25?'25¢':per===0.10?'10¢':'5¢')}`}); $('#qty').value=0; render(); }
+function addWeightItem(kind){ if(!selectedMat){ alert('Pick a material below.'); return;} const lbs=+($('#pounds')?.value||0); if(!lbs) return; let rate=(prices[selectedMat]||0); let tag=(kind==='CRV')?'CRV':'Non-CRV'; if(selectedMat==='ALUMINUM'&&kind==='ALU175'){ rate=1.75; tag='Alu $1.75'; } order.push({type:'weight',mat:selectedMat,lbs,unitPrice:rate,subtotal:lbs*rate,detail:`${tag} · ${lbs.toFixed(2)} lb × ${money(rate)}/lb`}); $('#pounds').value='0'; render(); }
+function addCountItem(per){ if(!selectedMat){ alert('Pick a material below.'); return;} const qty=+($('#qty')?.value||0); if(!qty) return; order.push({type:'crv',mat:selectedMat,qty,unitPrice:per,subtotal:qty*per,detail:`${qty} × ${(per===0.25?'25¢':per===0.10?'10¢':'5¢')}`}); $('#qty').value='0'; render(); }
 
 /* Render order */
 function render(){ const tb=$('#orderTable tbody'); if(!tb) return; tb.innerHTML=''; let crv=0,wt=0; order.forEach((it,i)=>{const tr=document.createElement('tr'); tr.innerHTML=`<td>${materials[it.mat].label}</td><td>${it.detail}</td><td class="pricecell">${money(it.subtotal)}</td><td><button class='btn' data-i='${i}'>✕</button></td>`; tb.appendChild(tr); if(it.type==='weight') wt+=it.subtotal; else crv+=it.subtotal; }); set('#crvTotal',money(crv)); set('#weightTotal',money(wt)); set('#grandTotal',money(crv+wt)); tb.querySelectorAll('button[data-i]').forEach(b=>b.addEventListener('click',()=>{order.splice(+b.dataset.i,1);render();})); }
@@ -426,14 +439,12 @@ on('#viewOrders','click', async ()=>{
 /* Code modal: QR primary + Code128 fallback */
 function showBarcode(text){
   set('#barcodeHint', text);
-  // QR primary
   try{
     const canvas = $('#qrCanvas');
     QRCode.toCanvas(canvas, text, { width: 320, margin: 1 }, function(err){
       if(err) console.warn('QR error', err);
     });
   }catch(e){ console.warn('QR lib error', e); }
-  // Code128 fallback (hidden)
   try{
     JsBarcode('#barcodeSVG', text, {format:'CODE128', lineColor:'#111', background:'#fff0', width:2, height:120, margin:10, displayValue:true, fontSize:18});
   }catch(e){}
@@ -458,20 +469,69 @@ on('#printBar','click', ()=>{
   w.document.write(html); w.document.close();
 });
 
-/* Scanner */
-const hasDetector = 'BarcodeDetector' in window;
-on('#scanBtn','click', ()=>{ set('#apiState','API: '+(hasDetector?'supported ✔':'not supported ✖')); set('#scanResult','Point camera at QR or barcode.'); $('#scanOrder').style.display='none'; $('#scanModal').showModal(); });
-let stream=null, raf=null, detector=null;
-async function startScan(){ try{ stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}}); set('#camState','Camera: on ✔'); const v=$('#video'); v.srcObject=stream; await v.play(); if(hasDetector){ detector = new BarcodeDetector({formats:['qr_code','code_128','code_39','ean_13','upc_a']}); loopScan(); } else { set('#scanResult','This browser does not support BarcodeDetector.'); } }catch(e){ set('#camState','Camera: error'); alert(e.message); } }
-function stopScan(){ try{ if(raf) cancelAnimationFrame(raf); if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; } set('#camState','Camera: idle'); }catch(e){} }
-on('#startCam','click', ()=>{ if(stream){ stopScan(); } else { startScan(); } });
-async function loopScan(){ const v=$('#video'); const tick=async()=>{ try{ const codes=await detector.detect(v); if(codes && codes.length){ const val=codes[0].rawValue||codes[0].displayValue||''; await onScan(val); return; } }catch(e){} raf=requestAnimationFrame(tick); }; tick(); }
-async function onScan(val){ if(!val) return; stopScan(); set('#scanResult','Scanned: '+val); let o=null; try{ o=await window.cloud.getOrder(val);}catch{} if(o){ const rows=(o.items||[]).map(it=>`<li>${(materials[it.mat]||{label:it.mat}).label} — ${it.detail} <b>${money(it.subtotal)}</b></li>`).join(''); $('#scanOrder').style.display='block'; $('#scanOrder').innerHTML=`<h3 style='margin:10px 0'>${o.id}</h3><div class='hint'>${new Date(o.when).toLocaleString()} · Barcode: ${o.barcodeVerified?'✔':'✕'}</div><ul>${rows}</ul><div class='row' style='justify-content:flex-end;gap:16px'><span>CRV: <b>${o.totals?.crv||'$0.00'}</b></span><span>Weight: <b>${o.totals?.weight||'$0.00'}</b></span><span>Grand: <b>${o.totals?.grand||'$0.00'}</b></span></div><div class='row' style='justify-content:center;margin-top:10px'><button class='btn' onclick='(${startScan.toString()})();'>Scan Again</button></div>`; } else { $('#scanOrder').style.display='block'; $('#scanOrder').innerHTML = "<div class='hint'>No match found in cloud.</div>"; } }
+/* ===== Universal Scanner (ZXing) ===== */
+let stream=null, codeReader=null;
+on('#scanBtn','click', ()=>{
+  set('#scanResult','Point camera at QR or barcode.');
+  $('#scanOrder').style.display='none';
+  $('#scanModal').showModal();
+});
+async function startScan(){
+  try{
+    // Prefer rear camera
+    const constraints = { video: { facingMode: { ideal: 'environment' } } };
+    set('#camState','Camera: starting…');
+    // Start stream ourselves for full control
+    stream = await navigator.mediaDevices.getUserMedia(constraints);
+    const v=$('#video'); v.srcObject=stream; await v.play();
+    set('#camState','Camera: on ✔');
 
-/* Diagnostics (kept, but API button hidden) */
-const diag={ log:(m)=>{ const el=$('#diagLog'); if(el){ el.textContent += (m+'\\n'); el.scrollTop=el.scrollHeight; }}};
-on('#apiBtn','click', ()=>{ $('#apiModal').showModal(); set('#diagSdk','SDK: '+((auth||db)?'loaded ✔':'not loaded ✖')); set('#diagApp','App: initialized ✔'); set('#diagAuth','Auth: '+(auth?.currentUser?('signed in '+auth.currentUser.email):'signed out')); set('#diagFS','Firestore: '+(db?'ready ✔':'not ready ✖')); set('#diagRules','Rules check: idle'); });
-on('#runChecks','click', async ()=>{ try{ set('#diagSdk','SDK: '+((auth||db)?'loaded ✔':'not loaded ✖')); set('#diagApp','App: initialized ✔'); set('#diagAuth','Auth: '+(auth?.currentUser?('signed in '+auth.currentUser.email):'signed out')); set('#diagFS','Firestore: '+(db?'ready ✔':'not ready ✖')); if(db){ try{ const { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js'); const snap = await getDoc(doc(db,'settings','prices')); diag.log('Read settings/prices: '+(snap.exists()?'OK':'NOT FOUND')); set('#diagFS','Firestore: read '+(snap.exists()?'OK ✔':'not found')); }catch(e){ diag.log('Read error: '+(e.message||e)); set('#diagFS','Firestore: read error ✖'); } try{ const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js'); await setDoc(doc(db,'diagnostics','ping'), { at: new Date().toISOString(), by: auth?.currentUser?.email || null }); set('#diagRules','Rules check: write OK ✔'); diag.log('Write diagnostics/ping: OK'); }catch(e){ const code = e?.code || ''; set('#diagRules','Rules check: '+(code||'write failed ✖')); diag.log('Write error: '+(code||e.message||e)); } } }catch(e){ diag.log('Checks failed: '+(e.message||e)); } });
+    // ZXing multi-format reader
+    codeReader = new ZXing.BrowserMultiFormatReader();
+    await codeReader.decodeFromVideoDevice(null, v, async (result, err)=>{
+      if(result){
+        const val = result.getText ? result.getText() : (result.text || '');
+        if(val){ await onScan(val); }
+      }
+    });
+  }catch(e){
+    set('#camState','Camera: error');
+    alert(e.message||e);
+  }
+}
+function stopScan(){
+  try{
+    if(codeReader){ codeReader.reset(); codeReader=null; }
+    if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+    set('#camState','Camera: idle');
+  }catch(e){}
+}
+on('#startCam','click', ()=>{ if(stream){ stopScan(); } else { startScan(); } });
+
+async function onScan(val){
+  if(!val) return;
+  stopScan();
+  set('#scanResult','Scanned: '+val);
+  let o=null; try{ o=await window.cloud.getOrder(val);}catch{}
+  if(o){
+    const rows=(o.items||[]).map(it=>`<li>${(materials[it.mat]||{label:it.mat}).label} — ${it.detail} <b>${money(it.subtotal)}</b></li>`).join('');
+    $('#scanOrder').style.display='block';
+    $('#scanOrder').innerHTML=`<h3 style='margin:10px 0'>${o.id}</h3>
+      <div class='hint'>${new Date(o.when).toLocaleString()}</div>
+      <ul>${rows}</ul>
+      <div class='row' style='justify-content:flex-end;gap:16px'>
+        <span>CRV: <b>${o.totals?.crv||'$0.00'}</b></span>
+        <span>Weight: <b>${o.totals?.weight||'$0.00'}</b></span>
+        <span>Grand: <b>${o.totals?.grand||'$0.00'}</b></span>
+      </div>
+      <div class='row' style='justify-content:center;margin-top:10px'>
+        <button class='btn' onclick='(${startScan.toString()})();'>Scan Again</button>
+      </div>`;
+  } else {
+    $('#scanOrder').style.display='block';
+    $('#scanOrder').innerHTML = "<div class='hint'>No match found in cloud.</div>";
+  }
+}
 
 /* Receipt Printing (QR primary) */
 function buildReceiptHTML(order){
