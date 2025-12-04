@@ -131,7 +131,10 @@
       </div>
       <div class="row" style="justify-content:space-between; align-items:center">
         <span id="cloudState" class="pill">Cloud: initializing…</span>
-        <button id="apiBtn" class="btn" style="display:none">API</button>
+        <div class="row" style="gap:6px">
+          <button id="offlineBtn" class="btn">Offline mode</button>
+          <button id="apiBtn" class="btn" style="display:none">API</button>
+        </div>
       </div>
     </div>
   </div>
@@ -572,6 +575,26 @@ const fbCfg = {
 let auth=null, db=null;
 let firebaseReady = false;
 let cloudInitTimer = null;
+let isLocalMode = false;
+
+// Local-only fallback for when Firebase cannot initialize (bad rules, offline, etc.)
+function enableLocalMode(reason){
+  isLocalMode = true;
+  firebaseReady = true;
+  const key='local_orders';
+  window.cloud={
+    async saveOrder(o){ const arr=JSON.parse(localStorage.getItem(key)||'[]'); arr.unshift(o); localStorage.setItem(key,JSON.stringify(arr.slice(0,50))); return o; },
+    async getOrder(id){ const arr=JSON.parse(localStorage.getItem(key)||'[]'); return arr.find(o=>o.id===id)||null; },
+    async listOrders(){ return JSON.parse(localStorage.getItem(key)||'[]'); },
+    async clearAll(){ localStorage.removeItem(key); },
+    async getPrices(){ const map=JSON.parse(localStorage.getItem('sr_prices')||'{}'); return Object.keys(map).length?{map}:null; },
+    async setPrices(map){ localStorage.setItem('sr_prices',JSON.stringify(map)); return {map}; }
+  };
+  setCloud('Cloud: offline', `Cloud: offline (${reason||'local mode'})`);
+  set('#staffStatus','Staff: local-only');
+  show('#authScreen',false); show('#appShell',true);
+  $('#logoutBtn')?.setAttribute('disabled','disabled');
+}
 
 setCloud('Cloud: initializing…','Cloud: initializing…');
 
@@ -619,14 +642,18 @@ function initFirebaseCompat(){
   }catch(e){
     console.error('Firebase init error:', e);
     clearTimeout(cloudInitTimer);
-    setCloud('Cloud error','Cloud error: '+(e.message||e));
-    firebaseReady = false;
+    enableLocalMode(e?.message||'init error');
   }
 }
 initFirebaseCompat();
 
 /* Login / Logout */
+on('#offlineBtn','click',()=>{
+  enableLocalMode('manual');
+});
+
 on('#authLogin','click', async ()=>{
+  if(!auth){ enableLocalMode('auth unavailable'); return; }
   const email = $('#authEmail')?.value.trim();
   const pass  = $('#authPass')?.value.trim();
   if(!email || !pass){ set('#authHint','Enter email and password'); return; }
@@ -658,8 +685,8 @@ on('#printLastW',()=>{ if(__lastSavedOrder) printReceipt(__lastSavedOrder); else
 async function saveOrderCommon(hintSel, printSel){
   set(hintSel,'');
   if(!order.length){ set(hintSel,'Add some items first.'); return; }
-  if(!firebaseReady || !window.cloud || !db){ set(hintSel,'Cloud not ready. Try again in a moment.'); return; }
-  if(!auth || !auth.currentUser){ set(hintSel,'Please sign in first.'); return; }
+  if(!firebaseReady || !window.cloud || (!db && !isLocalMode)){ set(hintSel,'Cloud not ready. Try again in a moment.'); return; }
+  if(!isLocalMode && (!auth || !auth.currentUser)){ set(hintSel,'Please sign in first.'); return; }
 
   const payload={ id:'SR-'+Date.now(), when:new Date().toISOString(), barcodeVerified:true, items:[...order], totals: currentTotals() };
   try{
