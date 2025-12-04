@@ -129,6 +129,10 @@
         <span id="authHint" class="hint">Enter your staff email and password.</span>
         <button id="authLogin" class="btn success">Sign in</button>
       </div>
+      <!-- Forgot password row -->
+      <div class="row" style="justify-content:flex-end; align-items:center">
+        <button id="resetPass" class="btn">Forgot password?</button>
+      </div>
       <div class="row" style="justify-content:space-between; align-items:center">
         <span id="cloudState" class="pill">Cloud: initializing…</span>
         <div class="row" style="gap:6px">
@@ -625,20 +629,25 @@ function initFirebaseCompat(){
       async setPrices(map){ return db.collection('settings').doc('prices').set({ map, updatedAt: new Date().toISOString() }); }
     };
 
+    // Mark Firebase as ready BEFORE attaching listener
+    firebaseReady = true;
+    clearTimeout(cloudInitTimer);
+    setCloud('Cloud: ready (sign in)','Cloud: ready');
+
     auth.onAuthStateChanged((user)=>{
       if(user){
         setCloud('Cloud: connected','Cloud: connected');
         set('#staffStatus',`Staff: ${user.email||user.uid}`);
-        show('#authScreen',false); show('#appShell',true);
+        show('#authScreen',false); 
+        show('#appShell',true);
       }else{
-        setCloud('Cloud: sign in required', firebaseReady ? 'Cloud: ready (sign in)' : 'Cloud: initializing…');
-        show('#appShell',false); show('#authScreen',true);
+        // Firebase is ready here; just show sign-in required
+        setCloud('Cloud: sign in required','Cloud: ready (sign in)');
+        show('#appShell',false); 
+        show('#authScreen',true);
       }
     });
 
-    firebaseReady = true;
-    clearTimeout(cloudInitTimer);
-    setCloud('Cloud: ready (sign in)','Cloud: ready');
   }catch(e){
     console.error('Firebase init error:', e);
     clearTimeout(cloudInitTimer);
@@ -668,6 +677,32 @@ on('#authLogin','click', async ()=>{
     set('#authHint',map[code]||('Login failed: '+code));
   }
 });
+
+on('#resetPass','click', async ()=>{
+  if(!auth){
+    set('#authHint','Auth not ready. Try again.');
+    return;
+  }
+  const email = $('#authEmail')?.value.trim();
+  if(!email){
+    set('#authHint','Enter your email first.');
+    return;
+  }
+  try{
+    set('#authHint','Sending reset email…');
+    await auth.sendPasswordResetEmail(email);
+    set('#authHint','Reset link sent. Check your email.');
+  }catch(e){
+    console.error(e);
+    const code = e?.code || '';
+    const map = {
+      'auth/invalid-email':'Invalid email.',
+      'auth/user-not-found':'No user with that email.'
+    };
+    set('#authHint', map[code] || ('Reset failed: '+code));
+  }
+});
+
 on('#logoutBtn','click', async ()=>{ try{ await auth.signOut(); }catch{} });
 
 /* Save order (shared) */
