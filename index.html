@@ -222,4 +222,736 @@
       <div id="materialsCard" class="card" style="margin-top:12px">
         <label style="display:block;margin-bottom:8px">Materials</label>
         <div id="matGrid" class="grid"></div>
-        <div id="choicePanel" class="row" style="gap:10px;display:n
+        <div id="choicePanel" class="row" style="gap:10px;display:none;flex-wrap:wrap"></div>
+        <div class="hint" id="pickedHint">Weight by default. Enter lbs first, then tap a material; grid hides and shows CRV (left) / Non-CRV (right). If <b>CNT</b> is checked, enter quantity then tap material to get &lt;24 (5¢) / ≥24 (10¢). <b>Bag-in-Box, Pouch, Carton = 25¢ each</b>. Aluminum right button = $1.75/lb. <b>Non-CRV has no payout.</b></div>
+      </div>
+    </div>
+
+    <!-- LANDSCAPE WIZARD (phones only) -->
+    <div id="wizardLayout" class="wizard landscape-hide">
+      <section class="panel" id="panelEnter">
+        <div class="card">
+          <div class="row" style="justify-content:space-between;align-items:center">
+            <b>Step 1 — Enter</b>
+            <label class="row" style="align-items:center;gap:6px"><input type="checkbox" id="cntModeW"><span class="hint">CNT (Count)</span></label>
+          </div>
+          <div id="weightBoxW" class="card" style="margin-top:10px">
+            <label for="poundsW">Weight (lb)</label>
+            <input id="poundsW" type="number" step="0.01" inputmode="decimal" min="0" value="0" enterkeyhint="next">
+            <div class="hint" id="weightPreviewW">$0.00</div>
+          </div>
+          <div id="countBoxW" class="card" style="margin-top:10px;display:none">
+            <label for="qtyW">Count</label>
+            <input id="qtyW" type="number" inputmode="numeric" pattern="[0-9]*" value="0" min="0" enterkeyhint="next">
+            <div class="hint" id="countPreviewW">$0.00</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" id="panelMaterials">
+        <div class="card">
+          <b>Step 2 — Pick Material</b>
+          <div id="matGridW" class="grid" style="margin-top:8px"></div>
+          <div id="choicePanelW" class="row" style="gap:10px;display:none;flex-wrap:wrap"></div>
+          <div class="hint" id="pickedHintW">Enter value in Step 1, then choose. Special: Bag-in-Box / Pouch / Carton = 25¢ each. <b>Non-CRV has no payout.</b></div>
+        </div>
+      </section>
+
+      <section class="panel" id="panelOrder">
+        <div class="card">
+          <b>Step 3 — Order</b>
+          <div class="hint" id="chosenMatLabelW" style="margin:4px 0 8px">Material: —</div>
+          <table id="orderTableW">
+            <thead><tr><th>Item</th><th>Detail</th><th class="pricecell">Subtotal</th><th></th></tr></thead>
+            <tbody></tbody>
+            <tfoot>
+              <tr><td colspan="2">CRV total</td><td class="pricecell" id="crvTotalW">$0.00</td><td></td></tr>
+              <tr><td colspan="2">Weight total</td><td class="pricecell" id="weightTotalW">$0.00</td><td></td></tr>
+              <tr><td colspan="2">Grand total</td><td class="pricecell" id="grandTotalW">$0.00</td><td></td></tr>
+            </tfoot>
+          </table>
+          <div class="sticky-bottom" style="margin-top:6px">
+            <div class="row" style="justify-content:space-between;gap:8px">
+              <button id="clearOrderW" class="btn danger">Clear</button>
+              <div class="row" style="gap:8px">
+                <button id="printLastW" class="btn" disabled>Receipt</button>
+                <button id="saveOrderW" class="btn success">Save Order</button>
+              </div>
+            </div>
+            <p class="hint" id="saveHintW"></p>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Wizard nav (phones landscape) -->
+    <div id="wizardNav" class="row">
+      <button id="stepPrev" class="btn">Back</button>
+      <div class="dots">
+        <span class="dot" id="d0"></span><span class="dot" id="d1"></span><span class="dot" id="d2"></span>
+      </div>
+      <button id="stepNext" class="btn primary" disabled>Next</button>
+    </div>
+
+  </div> <!-- /wrap -->
+
+  <!-- Floating pencil -->
+  <button id="editFab" class="fab" aria-label="Back to materials" title="Back to materials"><span>✎</span></button>
+
+  <!-- Prices Modal -->
+  <dialog id="pricesModal" style="border:0;padding:0;border-radius:16px;background:var(--card);color:var(--ink);width:min(720px,92vw)">
+    <div class="card" style="border:0">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <h3 style="margin:0">Edit Prices ($/lb)</h3>
+        <button class="btn" onclick="pricesModal.close()">✕</button>
+      </div>
+      <div id="priceGrid" class="row" style="flex-direction:column"></div>
+      <div class="row" style="justify-content:space-between;margin-top:10px;align-items:center">
+        <span id="priceSyncState" class="pill">Cloud prices: local-only</span>
+        <div>
+          <button class="btn" id="refreshPrices">Refresh</button>
+          <button class="btn primary" id="savePrices">Save</button>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Code Modal -->
+  <dialog id="barcodeModal" style="border:0;padding:0;border-radius:16px;background:var(--card);color:var(--ink);width:min(560px,96vw)">
+    <div class="card" style="border:0">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <h3 style="margin:0">Order Code</h3>
+        <div class="row">
+          <button id="shareBar" class="btn">Share</button>
+          <button id="printBar" class="btn">Print</button>
+          <button class="btn" onclick="barcodeModal.close()">✕</button>
+        </div>
+      </div>
+      <div class="center" style="width:100%">
+        <canvas id="qrCanvas" style="width:100%;max-width:320px;height:auto"></canvas>
+        <svg id="barcodeSVG" style="width:100%;max-width:520px;height:auto;display:none"></svg>
+      </div>
+      <div class="hint" id="barcodeHint" style="margin-top:8px;word-break:break-all"></div>
+    </div>
+  </dialog>
+
+  <!-- Orders Modal -->
+  <dialog id="ordersModal" style="border:0;padding:0;border-radius:16px;background:var(--card);color:var(--ink);width:min(720px,96vw)">
+    <div class="card" style="border:0">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <h3 style="margin:0">Saved Orders</h3>
+        <div class="row" style="gap:8px;align-items:center">
+          <button class="btn" onclick="ordersModal.close()">✕</button>
+        </div>
+      </div>
+      <div id="ordersList"></div>
+    </div>
+  </dialog>
+
+  <!-- Scanner Modal -->
+  <dialog id="scanModal" style="border:0;padding:0;border-radius:16px;background:var(--card);color:var(--ink);width:min(720px,96vw)">
+    <div class="card" style="border:0">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <h3 style="margin:0">Scan Code</h3>
+        <button class="btn" onclick="stopScan();scanModal.close()">✕</button>
+      </div>
+      <video id="video" playsinline></video>
+      <div class="row" style="justify-content:space-between;margin-top:6px">
+        <span class="pill" id="camState">Camera: idle</span>
+        <button id="startCam" class="btn primary">Start</button>
+      </div>
+      <div id="scanResult" class="hint" style="margin-top:8px">Point camera at QR or barcode.</div>
+      <div id="scanOrder" style="display:none"></div>
+    </div>
+  </dialog>
+</div>
+
+<script>
+/* ------ Helpers ------ */
+const $ = (q)=>document.querySelector(q);
+const on = (sel, evt, fn)=>{ const el=$(sel); if(el) el.addEventListener(evt, fn, {passive:true}); };
+const set = (sel, text)=>{ const el=$(sel); if(el) el.textContent = text; };
+const show = (sel, yes=true)=>{ const el=$(sel); if(!el) return; el.classList.toggle('hidden', !yes); };
+const money = (n)=> (isNaN(n)?0:n).toLocaleString(undefined,{style:'currency',currency:'USD'});
+function setCloud(status, state){
+  if(status) set('#cloudStatus', status);
+  if(state) set('#cloudState', state);
+}
+const isLandscapePhone = ()=> window.matchMedia('(orientation:landscape) and (max-height: 480px)').matches();
+
+/* Theme toggle */
+(function(){
+  const saved = localStorage.getItem('sr_theme')||'';
+  if(saved==='light') document.documentElement.setAttribute('data-theme','light');
+  on('#themeBtn','click', ()=>{
+    const isLight = document.documentElement.getAttribute('data-theme')==='light';
+    document.documentElement.setAttribute('data-theme', isLight?'':'light');
+    localStorage.setItem('sr_theme', isLight?'dark':'light');
+  });
+})();
+
+/* Cloud initial state */
+setCloud('Cloud: connecting…','Cloud: connecting…');
+
+/* Local cloud (always works) */
+const LOCAL_ORDERS_KEY = 'local_orders';
+const localCloud = {
+  async saveOrder(o){
+    const arr=JSON.parse(localStorage.getItem(LOCAL_ORDERS_KEY)||'[]');
+    arr.unshift(o);
+    localStorage.setItem(LOCAL_ORDERS_KEY,JSON.stringify(arr.slice(0,50)));
+    return o;
+  },
+  async getOrder(id){
+    const arr=JSON.parse(localStorage.getItem(LOCAL_ORDERS_KEY)||'[]');
+    return arr.find(o=>o.id===id)||null;
+  },
+  async listOrders(){
+    return JSON.parse(localStorage.getItem(LOCAL_ORDERS_KEY)||'[]');
+  },
+  async clearAll(){
+    localStorage.removeItem(LOCAL_ORDERS_KEY);
+  },
+  async getPrices(){
+    const map=JSON.parse(localStorage.getItem('sr_prices')||'{}');
+    return Object.keys(map).length?{map}:null;
+  },
+  async setPrices(map){
+    localStorage.setItem('sr_prices',JSON.stringify(map));
+    return {map};
+  }
+};
+
+/* window.cloud will always exist */
+window.cloud = localCloud;
+
+/* ------- Firebase Firestore (optional cloud sync) ------- */
+const fbCfg = {
+  apiKey: "AIzaSyCSRYYjuJyO6_N2n9RaA8T2fXRaHiC3q6o",
+  authDomain: "recycle-cb24b.firebaseapp.com",
+  projectId: "recycle-cb24b",
+  storageBucket: "recycle-cb24b.firebasestorage.app",
+  messagingSenderId: "281209650356",
+  appId: "1:281209650356:web:a3b55a3b4d7ce5e642abe1",
+  measurementId: "G-4DFFS1RH83"
+};
+
+let db = null;
+let remoteCloud = null;
+
+function initFirebase(){
+  if(typeof firebase === 'undefined' || !firebase.initializeApp){
+    console.warn('Firebase not available, staying local-only');
+    setCloud('Cloud: local-only','Cloud: local-only (no Firebase)');
+    return;
+  }
+  try{
+    const app = firebase.initializeApp(fbCfg);
+    db = firebase.firestore();
+    // Optional offline cache
+    db.enablePersistence({synchronizeTabs:true}).catch(()=>{});
+
+    remoteCloud = {
+      async saveOrder(o){ await db.collection('orders').doc(o.id).set(o); return o; },
+      async getOrder(id){ const s=await db.collection('orders').doc(id).get(); return s.exists?s.data():null; },
+      async listOrders(){ const s=await db.collection('orders').orderBy('when','desc').get(); return s.docs.map(d=>d.data()); },
+      async clearAll(){ const s=await db.collection('orders').get(); const batch=db.batch(); s.docs.forEach(d=>batch.delete(d.ref)); await batch.commit(); },
+      async getPrices(){ const s=await db.collection('settings').doc('prices').get(); return s.exists?s.data():null; },
+      async setPrices(map){ await db.collection('settings').doc('prices').set({ map, updatedAt:new Date().toISOString() }); return {map}; },
+    };
+
+    // Wrap local + remote: remote best-effort, local always
+    window.cloud = {
+      async saveOrder(o){
+        try{ if(remoteCloud) await remoteCloud.saveOrder(o); }catch(e){ console.warn('Remote save failed', e); }
+        return localCloud.saveOrder(o);
+      },
+      async getOrder(id){
+        if(remoteCloud){
+          try{
+            const r = await remoteCloud.getOrder(id);
+            if(r) return r;
+          }catch(e){ console.warn('Remote getOrder failed', e); }
+        }
+        return localCloud.getOrder(id);
+      },
+      async listOrders(){
+        if(remoteCloud){
+          try{
+            const arr = await remoteCloud.listOrders();
+            if(arr && arr.length) return arr;
+          }catch(e){ console.warn('Remote listOrders failed', e); }
+        }
+        return localCloud.listOrders();
+      },
+      async clearAll(){
+        if(remoteCloud){
+          try{ await remoteCloud.clearAll(); }catch(e){ console.warn('Remote clearAll failed', e); }
+        }
+        return localCloud.clearAll();
+      },
+      async getPrices(){
+        if(remoteCloud){
+          try{
+            const d = await remoteCloud.getPrices();
+            if(d && d.map) return d;
+          }catch(e){ console.warn('Remote getPrices failed', e); }
+        }
+        return localCloud.getPrices();
+      },
+      async setPrices(map){
+        if(remoteCloud){
+          try{ await remoteCloud.setPrices(map); }catch(e){ console.warn('Remote setPrices failed', e); }
+        }
+        return localCloud.setPrices(map);
+      }
+    };
+
+    setCloud('Cloud: connected','Cloud: connected (Firestore)');
+  }catch(e){
+    console.error('Firebase init error', e);
+    setCloud('Cloud: local-only','Cloud: local-only (Firebase error)');
+    window.cloud = localCloud;
+  }
+}
+initFirebase();
+
+/* Icons & Materials */
+const icons={can:`<svg viewBox='0 0 64 64' fill='none'><rect x='18' y='4' width='28' height='56' rx='6' stroke='#7dd3fc' stroke-width='3'/><rect x='22' y='10' width='20' height='44' rx='3' fill='#1a2744'/></svg>`,bottle:`<svg viewBox='0 0 64 64' fill='none'><path d='M28 6h8v8a8 8 0 0 1 4 7v30a8 8 0 0 1-8 8h0a8 8 0 0 1-8-8V21a8 8 0 0 1 4-7V6z' stroke='#7dd3fc' stroke-width='3' fill='#1a2744'/></svg>`,jug:`<svg viewBox='0 0 64 64' fill='none'><path d='M20 14h16l8 8v28a8 8 0 0 1-8 8H24a8 8 0 0 1-8-8V22a8 8 0 0 1 4-8z' stroke='#7dd3fc' stroke-width='3' fill='#1a2744'/><rect x='36' y='18' width='10' height='8' rx='2' stroke='#7dd3fc' stroke-width='3'/></svg>`,glass:`<svg viewBox='0 0 64 64' fill='none'><path d='M16 6h32l-6 40a10 10 0 0 1-10 8h0a10 10 0 0 1-10-8L16 6z' stroke='#7dd3fc' stroke-width='3' fill='#1a2744'/></svg>`,steel:`<svg viewBox='0 0 64 64' fill='none'><rect x='14' y='10' width='36' height='48' rx='6' stroke='#7dd3fc' stroke-width='3'/><path d='M18 22h28M18 30h28M18 38h28' stroke='#7dd3fc' stroke-width='2'/></svg>`,cup:`<svg viewBox='0 0 64 64' fill='none'><path d='M14 10h36l-6 36a10 10 0 0 1-10 8h0a10 10 0 0 1-10-8L14 10z' stroke='#7dd3fc' stroke-width='3' fill='#1a2744'/></svg>`,seven:`<svg viewBox='0 0 64 64' fill='none'><polygon points='8,12 56,12 28,56 12,56' stroke='#7dd3fc' stroke-width='3' fill='none'/><text x='28' y='40' fill='#7dd3fc' font-size='24' text-anchor='middle' font-family='monospace'>7</text></svg>`,pouch:`<svg viewBox='0 0 64 64' fill='none'><path d='M20 10h24l6 10v28l-6 6H20l-6-6V20l6-10z' stroke='#7dd3fc' stroke-width='3' fill='#1a2744'/></svg>`,baginbox:`<svg viewBox='0 0 64 64' fill='none'><rect x='10' y='12' width='44' height='40' rx='6' stroke='#7dd3fc' stroke-width='3' fill='none'/><circle cx='46' cy='44' r='6' stroke='#7dd3fc' stroke-width='3'/><path d='M44 44h4' stroke='#7dd3fc' stroke-width='3'/></svg>`,carton:`<svg viewBox='0 0 64 64' fill='none'><path d='M22 12h20l6 10v28a6 6 0 0 1-6 6H22a6 6 0 0 1-6-6V22l6-10z' stroke='#7dd3fc' stroke-width='3' fill='#1a2744'/><path d='M42 12l6 10H22' stroke='#7dd3fc' stroke-width='2'/><path d='M44 18c6 2 8 2 10 2' stroke='#7dd3fc' stroke-width='2'/></svg>`};
+const materials={ALUMINUM:{label:'Aluminum',unit:'lb',icon:icons.can},GLASS:{label:'Glass',unit:'lb',icon:icons.glass},PET1:{label:'#1 PET',unit:'lb',icon:icons.bottle},HDPE2:{label:'#2 HDPE',unit:'lb',icon:icons.jug},PVC3:{label:'#3 PVC',unit:'lb',icon:icons.bottle},LDPE4:{label:'#4 LDPE',unit:'lb',icon:icons.bottle},PP5:{label:'#5 PP',unit:'lb',icon:icons.cup},PS6:{label:'#6 PS',unit:'lb',icon:icons.cup},OTHER7:{label:'#7 Other Plastic',unit:'lb',icon:icons.seven},BIMETAL:{label:'Bi-metal',unit:'lb',icon:icons.steel},Pouch:{label:'Multi-Layer Pouch',unit:'lb',icon:icons.pouch},BagInBox:{label:'Bag-in-Box (wine)',unit:'lb',icon:icons.baginbox},JuiceBox:{label:'Paperboard Carton (BeatBox)',unit:'ea',icon:icons.carton}};
+let prices = JSON.parse(localStorage.getItem('sr_prices')||'null') || {ALUMINUM:1.65,GLASS:0.102,PET1:1.47,HDPE2:0.63,PVC3:0.48,LDPE4:0.98,PP5:0.55,PS6:0.31,OTHER7:0.41,BIMETAL:0.825,Pouch:0.41,BagInBox:3.79,JuiceBox_each:0.25};
+let selectedMat=null; const order=[];
+
+/* Build material grids */
+(function(){
+  const build=(gridId)=>{ const g=$(gridId); if(!g) return; g.innerHTML=''; Object.entries(materials).forEach(([k,v])=>{const b=document.createElement('button'); b.className='mat-btn'; b.innerHTML=`${v.icon}<span>${v.label}</span>`; b.addEventListener('click',()=>onMaterial(k)); g.appendChild(b);}); };
+  build('#matGrid'); build('#matGridW');
+})();
+
+/* Modes, inputs, pencil */
+function isCount(){ return $('#cntMode')?.checked; }
+function updatePanels(){ if(!$('#countBox')) return; $('#countBox').style.display=isCount()?'block':'none'; $('#weightBox').style.display=isCount()?'none':'block'; }
+on('#cntMode','change',()=>{ updatePanels(); restoreGrid(); });
+updatePanels();
+
+function isCountW(){ return $('#cntModeW')?.checked; }
+function updatePanelsW(){ $('#countBoxW').style.display=isCountW()?'block':'none'; $('#weightBoxW').style.display=isCountW()?'none':'block'; validateStep(); }
+on('#cntModeW','change',()=>{ updatePanelsW(); selectedMat=null; set('#pickedHintW','Enter value then choose.'); hideChoiceW(); });
+updatePanelsW();
+
+function autoPrep(sel){ const el=$(sel); if(!el) return; if(el.value==='0'||el.value==='0.00') el.value=''; el.select?.(); }
+function autoRestore(sel){ const el=$(sel); if(!el) return; if(!el.value) el.value='0'; }
+['#pounds','#qty','#poundsW','#qtyW'].forEach(id=>{
+  on(id,'focus', ()=>autoPrep(id));
+  on(id,'blur',  ()=>autoRestore(id));
+});
+on('#editFab','click', ()=>{ restoreGrid(); window.scrollTo({top:document.getElementById('materialsCard').offsetTop-20, behavior:'smooth'}); });
+
+/* Material choice flow */
+function onMaterial(key){
+  selectedMat=key; set('#chosenMatLabel','Material: '+materials[key].label); set('#chosenMatLabelW','Material: '+materials[key].label);
+  const isW = isLandscapePhone();
+  const p = isW ? $('#choicePanelW') : $('#choicePanel'); p.innerHTML='';
+  const grid = isW ? $('#matGridW') : $('#matGrid');
+  const showPanel = ()=>{ grid.style.display='none'; p.style.display='flex'; $('#editFab').style.display = isW ? 'none' : 'flex'; };
+
+  if((isW ? isCountW() : isCount())){
+    const qty=+((isW?$('#qtyW'):$('#qty'))?.value||0); if(!qty){ flashHint('Enter count first'); return; }
+    showPanel();
+    if(key==='BagInBox' || key==='Pouch' || key==='JuiceBox'){
+      p.append(makeBtn('25¢ each',()=>{addCountItem(0.25); restoreGrid(); if(isW) wizardGo(2,true);}));
+    }else{
+      p.append(
+        makeBtn('< 24 oz (5¢)', ()=>{addCountItem(0.05); restoreGrid(); if(isW) wizardGo(2,true);} ),
+        makeBtn('≥ 24 oz (10¢)',()=>{addCountItem(0.10); restoreGrid(); if(isW) wizardGo(2,true);} )
+      );
+    }
+  }else{
+    const lbs=+((isW?$('#poundsW'):$('#pounds'))?.value||0); if(!lbs){ flashHint('Enter weight first'); return; }
+    showPanel();
+    p.append(
+      makeBtn('CRV',()=>{addWeightItem('CRV'); restoreGrid(); if(isW) wizardGo(2,true);} ),
+      makeBtn(key==='ALUMINUM'?'$1.75/lb':'Non-CRV',()=>{addWeightItem(key==='ALUMINUM'?'ALU175':'NON'); restoreGrid(); if(isW) wizardGo(2,true);} )
+    );
+  }
+}
+function makeBtn(txt,fn){ const b=document.createElement('button'); b.className='btn primary'; b.textContent=txt; b.addEventListener('click',fn); return b; }
+function restoreGrid(){ ['#choicePanel','#choicePanelW'].forEach(id=>{ const p=$(id); if(p){ p.style.display='none'; } }); ['#matGrid','#matGridW'].forEach(id=>{ const g=$(id); if(g){ g.style.display='grid'; } }); set('#chosenMatLabel','Material: —'); set('#chosenMatLabelW','Material: —'); selectedMat=null; $('#editFab').style.display='none'; }
+function hideChoiceW(){ const p=$('#choicePanelW'); if(p){ p.style.display='none'; } const g=$('#matGridW'); if(g){ g.style.display='grid'; } }
+function flashHint(msg){ const el = isLandscapePhone() ? $('#pickedHintW') : $('#pickedHint'); if(!el) return; const prev=el.textContent; el.textContent=msg; setTimeout(()=>el.textContent=prev,1200); }
+
+/* Previews */
+on('#pounds','input', ()=>{ const lbs=+($('#pounds')?.value||0); const rate=(selectedMat && prices[selectedMat])||0; set('#weightPreview', money(lbs*rate)); });
+on('#qty','input',    ()=>{ const qty=+($('#qty')?.value||0); set('#countPreview', money(qty*0.05)); });
+on('#poundsW','input',()=>{ const lbs=+($('#poundsW')?.value||0); const rate=(selectedMat && prices[selectedMat])||0; set('#weightPreviewW', money(lbs*rate)); validateStep(); });
+on('#qtyW','input',   ()=>{ const qty=+($('#qtyW')?.value||0); set('#countPreviewW', money(qty*0.05)); validateStep(); });
+
+/* Add items */
+function addWeightItem(kind){
+  if(!selectedMat){ alert('Pick a material below.'); return;}
+  const lbs = isLandscapePhone() ? +($('#poundsW')?.value||0) : +($('#pounds')?.value||0);
+  if(!lbs) return;
+
+  let rate=(prices[selectedMat]||0);
+  let tag='', subtotal=0;
+
+  if(selectedMat==='ALUMINUM' && kind==='ALU175'){
+    rate=1.75; tag='Alu $1.75'; subtotal=lbs*rate;
+  }else if(kind==='CRV'){
+    tag='CRV'; subtotal=lbs*rate;
+  }else{ // NON
+    tag='Non-CRV (no payout)'; subtotal=0;
+  }
+
+  order.push({
+    type:'weight', mat:selectedMat, lbs, unitPrice:rate, payoutKind:kind,
+    subtotal,
+    detail:`${tag} · ${lbs.toFixed(2)} lb × ${money(rate)}/lb${subtotal===0?' — no payout':''}`
+  });
+
+  if(isLandscapePhone()){ $('#poundsW').value='0'; } else { $('#pounds').value='0'; }
+  render();
+}
+function addCountItem(per){
+  if(!selectedMat){ alert('Pick a material below.'); return;}
+  const qty = isLandscapePhone() ? +($('#qtyW')?.value||0) : +($('#qty')?.value||0);
+  if(!qty) return;
+  order.push({type:'crv',mat:selectedMat,qty,unitPrice:per,subtotal:qty*per,detail:`${qty} × ${(per===0.25?'25¢':per===0.10?'10¢':'5¢')}`});
+  if(isLandscapePhone()){ $('#qtyW').value='0'; } else { $('#qty').value='0'; }
+  render();
+}
+
+/* Render order */
+function render(){
+  const fill = (tbSel, crvSel, wtSel, grandSel, printBtnSel)=>{
+    const tb=$(tbSel); if(!tb) return;
+    tb.innerHTML=''; let crv=0,wt=0;
+    order.forEach((it,i)=>{
+      const nm=(materials[it.mat]||{label:it.mat}).label;
+      const tr=document.createElement('tr');
+      tr.innerHTML=`<td>${nm}</td><td>${it.detail}</td><td class="pricecell">${money(it.subtotal)}</td><td><button class='btn' data-i='${i}'>✕</button></td>`;
+      tb.appendChild(tr);
+      if(it.type==='weight') wt+=it.subtotal; else crv+=it.subtotal;
+    });
+    set(crvSel, money(crv));
+    set(wtSel, money(wt));
+    set(grandSel, money(crv+wt));
+    tb.querySelectorAll('button[data-i]').forEach(b=>b.addEventListener('click',()=>{order.splice(+b.dataset.i,1); render();}));
+    const printBtn=$(printBtnSel); if(printBtn) printBtn.disabled = order.length===0;
+  };
+  fill('#orderTable tbody','#crvTotal','#weightTotal','#grandTotal','#printLast');
+  fill('#orderTableW tbody','#crvTotalW','#weightTotalW','#grandTotalW','#printLastW');
+}
+on('#clearOrder','click',()=>{ order.splice(0,order.length); render(); });
+on('#clearOrderW','click',()=>{ order.splice(0,order.length); render(); });
+
+/* ----- Landscape Wizard Logic ----- */
+let step=0;
+function syncLayoutsVisibility(){
+  const isW = isLandscapePhone();
+  show('#regularLayout', !isW);
+  show('#wizardLayout', isW);
+  show('#wizardNav', isW);
+  if(isW) wizardGo(step,false);
+}
+function validateStep(){
+  if(!isLandscapePhone()) return;
+  const valid = isCountW() ? (+($('#qtyW')?.value||0) > 0) : (+($('#poundsW')?.value||0) > 0);
+  const nextBtn = $('#stepNext');
+  if(step===0){ nextBtn.disabled = !valid; }
+  if(step===1){ nextBtn.disabled = (order.length===0); }
+  if(step===2){ nextBtn.textContent='New Item'; nextBtn.disabled=false; }
+}
+function updateDots(){ ['#d0','#d1','#d2'].forEach((id,i)=>{ const el=$(id); if(el){ el.classList.toggle('active', i===step); } }); }
+function scrollToPanel(i){ ['#panelEnter','#panelMaterials','#panelOrder'][i] && $(['#panelEnter','#panelMaterials','#panelOrder'][i]).scrollIntoView({behavior:'smooth',block:'start'}); }
+function wizardGo(i){
+  step = Math.max(0, Math.min(2, i));
+  updateDots(); validateStep();
+  const nextBtn = $('#stepNext');
+  if(step===0){ nextBtn.textContent='Next'; }
+  if(step===1){ nextBtn.textContent='Next'; nextBtn.disabled=(order.length===0); }
+  if(step===2){ nextBtn.textContent='New Item'; nextBtn.disabled=false; }
+  scrollToPanel(step);
+}
+on('#stepPrev','click', ()=>{ wizardGo(step-1); });
+on('#stepNext','click', ()=>{
+  if(step===2){ wizardGo(0); return; }
+  wizardGo(step+1);
+});
+window.addEventListener('resize', syncLayoutsVisibility);
+window.addEventListener('orientationchange', ()=> setTimeout(syncLayoutsVisibility, 200));
+syncLayoutsVisibility();
+
+/* ------- Local login/logout (UI only) ------- */
+function completeLogin(label){
+  set('#staffStatus',`Staff: ${label}`);
+  show('#authScreen',false);
+  show('#appShell',true);
+}
+on('#authLogin','click', ()=>{
+  const email = $('#authEmail')?.value.trim();
+  // password ignored on purpose; this is UI-only
+  if(!email){
+    set('#authHint','Enter your email (local-only login).');
+    return;
+  }
+  set('#authHint','Signed in (local-only). Firestore sync is automatic.');
+  completeLogin(email);
+});
+on('#resetPass','click', ()=>{
+  set('#authHint','Password is not checked by server in this build. Any password works; Firestore uses open rules.');
+});
+on('#offlineBtn','click', ()=>{
+  set('#authHint','Continuing as guest.');
+  completeLogin('guest');
+});
+on('#logoutBtn','click', ()=>{
+  show('#appShell',false);
+  show('#authScreen',true);
+  set('#staffStatus','Staff: guest');
+});
+
+/* Save order (shared) */
+let __lastSavedOrder = null;
+function currentTotals(){
+  return {
+    crv:   ($('#crvTotal').textContent   || $('#crvTotalW')?.textContent   || '$0.00'),
+    weight:($('#weightTotal').textContent|| $('#weightTotalW')?.textContent|| '$0.00'),
+    grand: ($('#grandTotal').textContent || $('#grandTotalW')?.textContent || '$0.00'),
+  };
+}
+on('#printLast', ()=>{ if(__lastSavedOrder) printReceipt(__lastSavedOrder); else alert('Save an order first.'); });
+on('#printLastW',()=>{ if(__lastSavedOrder) printReceipt(__lastSavedOrder); else alert('Save an order first.'); });
+
+async function saveOrderCommon(hintSel, printSel){
+  set(hintSel,'');
+  if(!order.length){ set(hintSel,'Add some items first.'); return; }
+  if(!window.cloud){ set(hintSel,'Cloud not ready.'); return; }
+
+  const payload={ id:'SR-'+Date.now(), when:new Date().toISOString(), barcodeVerified:true, items:[...order], totals: currentTotals() };
+  try{
+    await window.cloud.saveOrder(payload);
+    __lastSavedOrder = payload;
+    const pb=document.querySelector(printSel); if(pb) pb.disabled=false;
+    order.splice(0,order.length); render();
+    set(hintSel,'Saved ✔ (local + Firestore if available)'); if('vibrate' in navigator) navigator.vibrate?.(10);
+    setTimeout(()=>set(hintSel,''),1400);
+  }catch(e){
+    console.error('Save failed:', e);
+    set(hintSel,'Save failed: '+(e?.message||String(e)));
+  }
+}
+on('#saveOrder',  ()=> saveOrderCommon('#saveHint','#printLast'));
+on('#saveOrderW', ()=> saveOrderCommon('#saveHintW','#printLastW'));
+
+/* Prices modal */
+on('#openPrices','click', ()=>{ buildPricesForm(); $('#pricesModal').showModal(); });
+function buildPricesForm(){
+  const grid=$('#priceGrid'); grid.innerHTML='';
+  Object.keys(materials).forEach(k=>{
+    if(materials[k].unit==='ea') return;
+    const row=document.createElement('div'); row.className='row'; row.style.flexDirection='column';
+    row.innerHTML=`<label>${materials[k].label}</label><input type='number' step='0.001' id='p_${k}' value='${prices[k]??''}' placeholder='$/lb'>`;
+    grid.appendChild(row);
+  });
+  const jb=document.createElement('div'); jb.className='row'; jb.style.flexDirection='column';
+  jb.innerHTML=`<label>Paperboard Carton (BeatBox) – price each</label><input type='number' step='0.01' id='p_JuiceBox_each' value='${prices.JuiceBox_each??0.25}' placeholder='$/ea'>`;
+  grid.appendChild(jb);
+  set('#priceSyncState','Cloud prices: local + Firestore (if available)');
+}
+on('#refreshPrices','click', async ()=>{
+  try{
+    const doc=await window.cloud.getPrices();
+    if(doc?.map){ prices={...prices,...doc.map}; localStorage.setItem('sr_prices',JSON.stringify(prices)); buildPricesForm(); }
+  }catch{}
+});
+on('#savePrices','click', async ()=>{
+  const next={};
+  Object.keys(materials).forEach(k=>{ if(materials[k].unit==='lb'){ next[k]=+(($('#p_'+k)||{}).value||0)||0; } });
+  next.JuiceBox_each=+(($('#p_JuiceBox_each')||{}).value||0.25)||0.25;
+  prices={...prices,...next};
+  localStorage.setItem('sr_prices',JSON.stringify(prices));
+  try{ await window.cloud.setPrices(prices);}catch{}
+  $('#pricesModal').close();
+});
+
+/* Orders modal */
+on('#viewOrders','click', async ()=>{
+  const list=$('#ordersList'); list.innerHTML='';
+  try{
+    const all=await window.cloud.listOrders();
+    if(!all.length){ list.innerHTML='<div class="hint">No orders yet.</div>'; ordersModal.showModal(); return; }
+    all.forEach(o=>{
+      const div=document.createElement('div'); div.className='card';
+      const header=document.createElement('div'); header.className='row'; header.style.justifyContent='space-between'; header.style.alignItems='center';
+      const left=document.createElement('b'); left.textContent=o.id;
+      const btn=document.createElement('button'); btn.className='btn primary'; btn.textContent='Code'; btn.addEventListener('click',()=>showBarcode(o.id));
+      const rbtn=document.createElement('button'); rbtn.className='btn'; rbtn.textContent='Receipt'; rbtn.style.marginLeft='6px'; rbtn.addEventListener('click',()=>printReceiptById(o.id));
+      const right=document.createElement('span'); right.className='hint'; right.textContent=new Date(o.when).toLocaleString()+` · Barcode: ${o.barcodeVerified?'✔':'✕'}`;
+      header.append(left,btn,rbtn,right);
+      const ul=document.createElement('ul'); ul.innerHTML=(o.items||[]).map(it=>`<li>${(materials[it.mat]||{label:it.mat}).label} — ${it.detail} <b>${money(it.subtotal)}</b></li>`).join('');
+      const totals=document.createElement('div'); totals.className='row'; totals.style.justifyContent='flex-end'; totals.style.gap='16px'; totals.innerHTML=`<span>CRV: <b>${o.totals?.crv||'$0.00'}</b></span><span>Weight: <b>${o.totals?.weight||'$0.00'}</b></span><span>Grand: <b>${o.totals?.grand||'$0.00'}</b></span>`;
+      div.append(header,ul,totals); list.appendChild(div);
+    });
+    ordersModal.showModal();
+  }catch(e){ list.innerHTML='<div class="hint">Read failed.</div>'; ordersModal.showModal(); }
+});
+
+/* Code modal: QR + Code128 */
+function codeColors(){
+  const isLight = document.documentElement.getAttribute('data-theme')==='light';
+  return isLight
+    ? { dark:'#111111', light:'#ffffff', line:'#111111', bg:'transparent' }
+    : { dark:'#ffffff', light:'#0f1730', line:'#e5efff', bg:'transparent' };
+}
+function showBarcode(text){
+  set('#barcodeHint', text);
+  const cc = codeColors();
+  try{
+    const canvas = $('#qrCanvas');
+    QRCode.toCanvas(canvas, text, { width: 320, margin: 1, color:{ dark: cc.dark, light: cc.light } }, function(err){
+      if(err) console.warn('QR error', err);
+    });
+  }catch(e){ console.warn('QR lib error', e); }
+  try{
+    JsBarcode('#barcodeSVG', text, {format:'CODE128', lineColor: cc.line, background: cc.bg, width:2, height:120, margin:10, displayValue:true, fontSize:18});
+  }catch(e){}
+  $('#barcodeModal').showModal();
+}
+on('#shareBar','click', async ()=>{
+  const canvas=$('#qrCanvas');
+  try{
+    const data=canvas.toDataURL('image/png');
+    if(navigator.share && navigator.canShare){
+      const r=await fetch(data); const blob=await r.blob();
+      const file=new File([blob],'order.png',{type:'image/png'});
+      if(navigator.canShare({files:[file]})){ await navigator.share({files:[file], title:'Order Code'}); return; }
+    }
+    window.open(data,'_blank');
+  }catch(e){ window.open(canvas.toDataURL('image/png'),'_blank'); }
+});
+on('#printBar','click', ()=>{
+  const canvas=$('#qrCanvas');
+  const w=window.open('','print');
+  const html=`<html><head><title>Code</title></head><body style='margin:0;padding:20px;text-align:center;background:#fff'><img src='${canvas.toDataURL('image/png')}' style='max-width:320px;width:100%'><script>window.onload=()=>{window.print();setTimeout(()=>window.close(),300);}</`+'script></body></html>`;
+  w.document.write(html); w.document.close();
+});
+
+/* Scanner (ZXing) */
+let stream=null, codeReader=null;
+const scanModal = document.getElementById('scanModal');
+if(scanModal){
+  scanModal.addEventListener('close', stopScan, {passive:true});
+  scanModal.addEventListener('cancel', stopScan, {passive:true});
+}
+on('#scanBtn','click', ()=>{
+  $('#scanOrder').style.display='none';
+  set('#scanResult','Point camera at QR or barcode.');
+  $('#scanModal').showModal();
+});
+async function startScan(){
+  try{
+    if(!navigator.mediaDevices?.getUserMedia){
+      set('#camState','Camera: unsupported in this browser');
+      return;
+    }
+    const constraints = { video: { facingMode: { ideal: 'environment' } } };
+    set('#camState','Camera: starting…');
+    stream = await navigator.mediaDevices.getUserMedia(constraints);
+    const v=$('#video'); v.srcObject=stream; await v.play();
+    set('#camState','Camera: on ✔');
+    codeReader = new ZXing.BrowserMultiFormatReader();
+    await codeReader.decodeFromVideoDevice(null, v, async (result, err)=>{
+      if(result){
+        const val = result.getText ? result.getText() : (result.text || '');
+        if(val){ await onScan(val); }
+      }
+    });
+  }catch(e){ set('#camState','Camera: error'); alert(e.message||e); }
+}
+function stopScan(){ try{ if(codeReader){ codeReader.reset(); codeReader=null; } if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; } set('#camState','Camera: idle'); }catch(e){} }
+on('#startCam','click', ()=>{ if(stream){ stopScan(); } else { startScan(); } });
+async function onScan(val){
+  if(!val) return;
+  stopScan();
+  set('#scanResult','Scanned: '+val);
+  let o=null; try{ o=await window.cloud.getOrder(val);}catch{}
+  if(o){
+    const rows=(o.items||[]).map(it=>`<li>${(materials[it.mat]||{label:it.mat}).label} — ${it.detail} <b>${money(it.subtotal)}</b></li>`).join('');
+    $('#scanOrder').style.display='block';
+    $('#scanOrder').innerHTML=`<h3 style='margin:10px 0'>${o.id}</h3>
+      <div class='hint'>${new Date(o.when).toLocaleString()}</div>
+      <ul>${rows}</ul>
+      <div class='row' style='justify-content:flex-end;gap:16px'>
+        <span>CRV: <b>${o.totals?.crv||'$0.00'}</b></span>
+        <span>Weight: <b>${o.totals?.weight||'$0.00'}</b></span>
+        <span>Grand: <b>${o.totals?.grand||'$0.00'}</b></span>
+      </div>
+      <div class='row' style='justify-content:center;margin-top:10px'>
+        <button class='btn' onclick='(${startScan.toString()})();'>Scan Again</button>
+      </div>`;
+  } else {
+    $('#scanOrder').style.display='block';
+    $('#scanOrder').innerHTML = "<div class='hint'>No match found in local/cloud orders.</div>";
+  }
+}
+
+/* ----- Receipt Printing (GRAND TOTAL only) ----- */
+function buildReceiptHTML(order){
+  const items = (order.items||[]);
+  const lines = items.map(it=>{
+    const name=(materials[it.mat]||{label:it.mat}).label;
+    const noPay = (it.type==='weight' && (it.payoutKind==='NON' || (typeof it.subtotal==='number' && it.subtotal===0)));
+    return `<tr><td>${name}</td><td>${it.detail}${noPay?'':' '}</td></tr>`;
+  }).join('');
+
+  const lbsTotal = items.filter(it=>it.type==='weight').reduce((a,b)=>a+(+b.lbs||0),0);
+  const lbsNoPay = items
+    .filter(it=>it.type==='weight' && (it.payoutKind==='NON' || (typeof it.subtotal==='number' && it.subtotal===0)))
+    .reduce((a,b)=>a+(+b.lbs||0),0);
+  const cntCRV  = items.filter(it=>it.type==='crv').reduce((a,b)=>a+(+b.qty||0),0);
+
+  const grand = order.totals?.grand || '$0.00';
+  const when  = new Date(order.when||Date.now()).toLocaleString();
+  const id    = order.id || 'UNSAVED';
+
+  return `<!doctype html><html><head><meta charset="utf-8"><title>Receipt ${id}</title>
+  <style>@media print{@page{margin:8mm}body{margin:0}}body{font-family:ui-monospace,Menlo,Consolas,monospace;color:#111;padding:12px;line-height:1.25}
+  .center{text-align:center}.small{font-size:12px;color:#333}table{width:100%;border-collapse:collapse;margin-top:6px}
+  th,td{padding:4px 0;border-bottom:1px dashed #ccc;font-size:14px}thead th{border-bottom:1px solid #000}
+  .logo{font-weight:700;letter-spacing:.5px;font-size:16px}.barcode{width:100%;max-width:240px;margin:10px auto}.muted{color:#666}
+  .box{border:1px dashed #bbb;padding:6px;border-radius:8px;margin-top:8px}</style>
+  </head><body>
+    <div class="center logo">Recycling Receipt</div>
+    <div class="center small">${when}</div>
+    <div class="small">Order ID: <b>${id}</b></div>
+
+    <table>
+      <thead><tr><th style="text-align:left">Item</th><th style="text-align:left">Detail</th></tr></thead>
+      <tbody>${lines || '<tr><td colspan="2" class="muted">No items</td></tr>'}</tbody>
+      <tfoot>
+        <tr><td colspan="2" style="text-align:right;font-size:16px">GRAND TOTAL: <span style="display:inline-block;min-width:96px">${grand}</span></td></tr>
+      </tfoot>
+    </table>
+
+    <div class="box">
+      <div class="small">Summary</div>
+      <div class="small">Weight received: <b>${lbsTotal.toFixed(2)} lb</b> &nbsp; | &nbsp; Non-CRV (no payout): <b>${lbsNoPay.toFixed(2)} lb</b> &nbsp; | &nbsp; CRV containers: <b>${cntCRV}</b></div>
+      <div class="small muted">Non-CRV materials are accepted but do not pay out. Thanks for keeping recyclables out of landfill!</div>
+    </div>
+
+    <div class="center"><canvas id="rcptQR" class="barcode"></canvas></div>
+    <div class="center small muted">Scan to pull this order in the app.</div>
+
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"><\/script>
+    <script>
+      try{QRCode.toCanvas(document.getElementById('rcptQR'),'${id}',{width:240,margin:1});}catch(e){}
+      window.onload=()=>{setTimeout(()=>{window.print();setTimeout(()=>window.close(),300);},200);};
+    <\/script>
+  </body></html>`;
+}
+async function printReceipt(order){ if(!order){ alert('No order to print'); return; } const w=window.open('','receipt'); w.document.write(buildReceiptHTML(order)); w.document.close(); }
+async function printReceiptById(id){ try{ const o=await window.cloud.getOrder(id); if(!o){ alert('Order not found'); return; } printReceipt(o); }catch(e){ alert('Could not load order'); } }
+</script>
+</body>
+</html>
