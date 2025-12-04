@@ -600,15 +600,24 @@ function enableLocalMode(reason){
   $('#logoutBtn')?.setAttribute('disabled','disabled');
 }
 
+// initial label
 setCloud('Cloud: initializing…','Cloud: initializing…');
 
+// hard timeout → auto local mode so "nothing works" never happens
 cloudInitTimer = setTimeout(()=>{
   if(firebaseReady) return;
-  setCloud('Cloud: offline','Cloud: offline (initializing took too long)');
+  console.warn('Firebase init timeout, switching to local mode');
+  enableLocalMode('initializing took too long');
 }, 6000);
 
 function initFirebaseCompat(){
   try{
+    if(typeof firebase === 'undefined'){
+      console.error('Firebase global not found');
+      enableLocalMode('firebase script missing');
+      return;
+    }
+
     const app = firebase.initializeApp(fbCfg);
     auth = firebase.auth();
     db   = firebase.firestore();
@@ -662,10 +671,16 @@ on('#offlineBtn','click',()=>{
 });
 
 on('#authLogin','click', async ()=>{
-  if(!auth){ enableLocalMode('auth unavailable'); return; }
   const email = $('#authEmail')?.value.trim();
   const pass  = $('#authPass')?.value.trim();
   if(!email || !pass){ set('#authHint','Enter email and password'); return; }
+
+  // if auth is not available, just drop to local mode
+  if(!auth){
+    enableLocalMode('auth unavailable');
+    return;
+  }
+
   try{
     set('#authHint','Signing in…');
     await auth.signInWithEmailAndPassword(email,pass);
@@ -673,7 +688,7 @@ on('#authLogin','click', async ()=>{
   }catch(e){
     console.error(e);
     const code=e?.code||'';
-    const map={'auth/invalid-email':'Invalid email.','auth/user-not-found':'No user with that email.','auth/wrong-password':'Wrong password.','auth/invalid-credential':'Invalid credentials.','auth/network-request-failed':'Network error.'};
+    const map={'auth/invalid-email':'Invalid email.','auth/user-not-found':'No user with that email.','auth/wrong-password':'Wrong password.','auth/invalid-credential':'Invalid credentials.','auth/network-request-failed':'Network error.','auth/unauthorized-domain':'Unauthorized domain (check Firebase Auth settings).'};
     set('#authHint',map[code]||('Login failed: '+code));
   }
 });
@@ -703,7 +718,7 @@ on('#resetPass','click', async ()=>{
   }
 });
 
-on('#logoutBtn','click', async ()=>{ try{ await auth.signOut(); }catch{} });
+on('#logoutBtn','click', async ()=>{ try{ await auth?.signOut?.(); }catch{} });
 
 /* Save order (shared) */
 let __lastSavedOrder = null;
@@ -720,7 +735,7 @@ on('#printLastW',()=>{ if(__lastSavedOrder) printReceipt(__lastSavedOrder); else
 async function saveOrderCommon(hintSel, printSel){
   set(hintSel,'');
   if(!order.length){ set(hintSel,'Add some items first.'); return; }
-  if(!firebaseReady || !window.cloud || (!db && !isLocalMode)){ set(hintSel,'Cloud not ready. Try again in a moment.'); return; }
+  if(!firebaseReady || !window.cloud){ set(hintSel,'Cloud not ready. Try again in a moment.'); return; }
   if(!isLocalMode && (!auth || !auth.currentUser)){ set(hintSel,'Please sign in first.'); return; }
 
   const payload={ id:'SR-'+Date.now(), when:new Date().toISOString(), barcodeVerified:true, items:[...order], totals: currentTotals() };
@@ -729,7 +744,7 @@ async function saveOrderCommon(hintSel, printSel){
     __lastSavedOrder = payload;
     const pb=document.querySelector(printSel); if(pb) pb.disabled=false;
     order.splice(0,order.length); render();
-    set(hintSel,'Saved to cloud ✔'); if('vibrate' in navigator) navigator.vibrate?.(10);
+    set(hintSel,'Saved ✔'); if('vibrate' in navigator) navigator.vibrate?.(10);
     setTimeout(()=>set(hintSel,''),1400);
   }catch(e){
     console.error('Save failed:', e);
@@ -838,11 +853,11 @@ if(scanModal){
 on('#scanBtn','click', ()=>{
   $('#scanOrder').style.display='none';
   if(!firebaseReady){
-    set('#scanResult','Cloud still initializing. Please wait for connection.');
+    set('#scanResult','Cloud not ready yet. Try again or use Offline mode.');
     $('#scanModal').showModal();
     return;
   }
-  if(!auth?.currentUser){
+  if(!auth?.currentUser && !isLocalMode){
     set('#scanResult','Sign in first to look up orders.');
     $('#scanModal').showModal();
     return;
@@ -960,7 +975,7 @@ window.addEventListener('load', ()=> setTimeout(async ()=>{
     if(!auth?.currentUser||!db) return;
     await db.collection('settings').doc('prices').get();
   }catch(e){
-    setCloud('Cloud: permission denied (check rules / authorized domain)','Cloud: permission denied (check rules / authorized domain)');
+    setCloud('Cloud: permission denied','Cloud: permission denied (rules / domain)');
   }
 }, 1200));
 </script>
