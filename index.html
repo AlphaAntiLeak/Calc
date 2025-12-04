@@ -364,12 +364,12 @@
 /* ---------- Global error -> visible status ---------- */
 window.addEventListener('error', (e)=>{
   const msg = 'Cloud error: ' + (e?.error?.message || e?.message || 'script error');
-  const el = document.querySelector('#cloudState'); if(el) el.textContent = msg;
+  setCloud('Cloud error', msg);
   console.error('Global error:', e);
 });
 window.addEventListener('unhandledrejection', (e)=>{
   const msg = 'Cloud error: ' + (e?.reason?.message || e?.reason || 'promise error');
-  const el = document.querySelector('#cloudState'); if(el) el.textContent = msg;
+  setCloud('Cloud error', msg);
   console.error('Unhandled rejection:', e);
 });
 
@@ -379,7 +379,8 @@ const on = (sel, evt, fn)=>{ const el=$(sel); if(el) el.addEventListener(evt, fn
 const set = (sel, text)=>{ const el=$(sel); if(el) el.textContent = text; };
 const show = (sel, yes=true)=>{ const el=$(sel); if(!el) return; el.classList.toggle('hidden', !yes); };
 const money = (n)=> (isNaN(n)?0:n).toLocaleString(undefined,{style:'currency',currency:'USD'});
-const isLandscapePhone = ()=> window.matchMedia('(orientation:landscape) and (max-height: 480px)').matches;
+function setCloud(status, state){ if(status) set('#cloudStatus', status); if(state) set('#cloudState', state); }
+const isLandscapePhone = ()=> window.matchMedia('(orientation:landscape) and (max-height: 480px)').matches();
 
 /* Theme toggle */
 (function(){
@@ -570,6 +571,14 @@ const fbCfg = {
 };
 let auth=null, db=null;
 let firebaseReady = false;
+let cloudInitTimer = null;
+
+setCloud('Cloud: initializing…','Cloud: initializing…');
+
+cloudInitTimer = setTimeout(()=>{
+  if(firebaseReady) return;
+  setCloud('Cloud: offline','Cloud: offline (initializing took too long)');
+}, 6000);
 
 function initFirebaseCompat(){
   try{
@@ -595,20 +604,22 @@ function initFirebaseCompat(){
 
     auth.onAuthStateChanged((user)=>{
       if(user){
-        set('#cloudStatus','Cloud: connected');
+        setCloud('Cloud: connected','Cloud: connected');
         set('#staffStatus',`Staff: ${user.email||user.uid}`);
         show('#authScreen',false); show('#appShell',true);
       }else{
-        set('#cloudStatus','Cloud: sign in required');
+        setCloud('Cloud: sign in required', firebaseReady ? 'Cloud: ready (sign in)' : 'Cloud: initializing…');
         show('#appShell',false); show('#authScreen',true);
       }
     });
 
     firebaseReady = true;
-    set('#cloudState','Cloud: ready');
+    clearTimeout(cloudInitTimer);
+    setCloud('Cloud: ready (sign in)','Cloud: ready');
   }catch(e){
     console.error('Firebase init error:', e);
-    set('#cloudState','Cloud error: '+(e.message||e));
+    clearTimeout(cloudInitTimer);
+    setCloud('Cloud error','Cloud error: '+(e.message||e));
     firebaseReady = false;
   }
 }
@@ -757,13 +768,32 @@ on('#printBar','click', ()=>{
 
 /* Universal Scanner (ZXing) */
 let stream=null, codeReader=null;
+const scanModal = document.getElementById('scanModal');
+if(scanModal){
+  scanModal.addEventListener('close', stopScan, {passive:true});
+  scanModal.addEventListener('cancel', stopScan, {passive:true});
+}
 on('#scanBtn','click', ()=>{
-  set('#scanResult','Point camera at QR or barcode.');
   $('#scanOrder').style.display='none';
+  if(!firebaseReady){
+    set('#scanResult','Cloud still initializing. Please wait for connection.');
+    $('#scanModal').showModal();
+    return;
+  }
+  if(!auth?.currentUser){
+    set('#scanResult','Sign in first to look up orders.');
+    $('#scanModal').showModal();
+    return;
+  }
+  set('#scanResult','Point camera at QR or barcode.');
   $('#scanModal').showModal();
 });
 async function startScan(){
   try{
+    if(!navigator.mediaDevices?.getUserMedia){
+      set('#camState','Camera: unsupported in this browser');
+      return;
+    }
     const constraints = { video: { facingMode: { ideal: 'environment' } } };
     set('#camState','Camera: starting…');
     stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -868,7 +898,7 @@ window.addEventListener('load', ()=> setTimeout(async ()=>{
     if(!auth?.currentUser||!db) return;
     await db.collection('settings').doc('prices').get();
   }catch(e){
-    set('#cloudStatus','Cloud: permission denied (check rules / authorized domain)');
+    setCloud('Cloud: permission denied (check rules / authorized domain)','Cloud: permission denied (check rules / authorized domain)');
   }
 }, 1200));
 </script>
