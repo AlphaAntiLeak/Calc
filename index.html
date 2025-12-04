@@ -35,7 +35,6 @@
   .btn[disabled]{opacity:.6; cursor:not-allowed}
   input,textarea{font:inherit; border-radius:12px; border:1px solid var(--border); background:color-mix(in oklab, var(--card) 92%, #0e1b30 14%); color:var(--ink); padding:12px}
   input[type=number]{text-align:center}
-  .hint{color:var(--muted); font-size:.9rem; min-height:1.2em}
 
   .wrap{max-width:960px; margin:0 auto; padding:14px}
   header{display:flex; gap:10px; align-items:center; justify-content:space-between}
@@ -52,11 +51,7 @@
   .mat-btn span{font-size:.8rem; text-align:center}
   .fab{position:fixed; right:16px; bottom:16px; width:56px; height:56px; border-radius:999px; background:color-mix(in oklab, var(--card) 80%, #1f2b45); border:1px solid #2a3e6633; display:none; align-items:center; justify-content:center; box-shadow:0 8px 24px rgba(0,0,0,.20)}
 
-  @media (max-width:420px){
-    header .row{gap:6px}
-    .btn{padding:10px 12px}
-    .grid{grid-template-columns:repeat(3,1fr)}
-  }
+  @media (max-width:420px){ header .row{gap:6px} .btn{padding:10px 12px} .grid{grid-template-columns:repeat(3,1fr)} }
 
   /* iPhone 15 Pro Max (portrait) */
   @supports (-webkit-touch-callout: none) {
@@ -108,9 +103,9 @@
     <header>
       <h1>Recycling<span class="badge">POS</span></h1>
       <div class="row" style="gap:8px;align-items:center">
-        <button id="themeBtn" class="btn" title="Toggle theme">☀︎/🌙</button>
         <button id="openPrices" class="btn">Prices</button>
         <button id="viewOrders" class="btn">Orders</button>
+        <button id="themeBtn" class="btn" title="Toggle theme">☀︎/🌙</button>
       </div>
     </header>
 
@@ -255,9 +250,7 @@
   </div> <!-- /wrap -->
 
   <!-- Floating pencil -->
-  <button id="editFab" class="fab" aria-label="Back to materials" title="Back to materials">
-    <span>✎</span>
-  </button>
+  <button id="editFab" class="fab" aria-label="Back to materials" title="Back to materials"><span>✎</span></button>
 
   <!-- Prices Modal -->
   <dialog id="pricesModal" style="border:0;padding:0;border-radius:16px;background:var(--card);color:var(--ink);width:min(720px,92vw)">
@@ -268,9 +261,9 @@
       </div>
       <div id="priceGrid" class="row" style="flex-direction:column"></div>
       <div class="row" style="justify-content:space-between;margin-top:10px;align-items:center">
-        <span class="pill">Prices stored locally on this device.</span>
+        <span id="priceSyncState" class="pill">Prices stored locally</span>
         <div>
-          <button class="btn" id="savePrices">Save</button>
+          <button class="btn primary" id="savePrices">Save</button>
         </div>
       </div>
     </div>
@@ -280,7 +273,7 @@
   <dialog id="ordersModal" style="border:0;padding:0;border-radius:16px;background:var(--card);color:var(--ink);width:min(720px,96vw)">
     <div class="card" style="border:0">
       <div class="row" style="justify-content:space-between;align-items:center">
-        <h3 style="margin:0">Saved Orders (this device)</h3>
+        <h3 style="margin:0">Saved Orders</h3>
         <div class="row" style="gap:8px;align-items:center">
           <button class="btn" onclick="ordersModal.close()">✕</button>
         </div>
@@ -310,26 +303,11 @@ const isLandscapePhone = ()=> window.matchMedia('(orientation:landscape) and (ma
   });
 })();
 
-/* Local orders + prices */
-const LOCAL_ORDERS_KEY = 'local_orders';
-const localCloud = {
-  async saveOrder(o){
-    const arr=JSON.parse(localStorage.getItem(LOCAL_ORDERS_KEY)||'[]');
-    arr.unshift(o);
-    localStorage.setItem(LOCAL_ORDERS_KEY,JSON.stringify(arr.slice(0,200)));
-    return o;
-  },
-  async getOrder(id){
-    const arr=JSON.parse(localStorage.getItem(LOCAL_ORDERS_KEY)||'[]');
-    return arr.find(o=>o.id===id)||null;
-  },
-  async listOrders(){
-    return JSON.parse(localStorage.getItem(LOCAL_ORDERS_KEY)||'[]');
-  }
-};
-window.cloud = localCloud;
+/* Storage keys */
+const ORDERS_KEY = 'sr_orders_v1';
+const PRICES_KEY = 'sr_prices';
 
-/* Icons & Materials (1–7 plastics, cartons, etc.) */
+/* Icons & Materials */
 const icons={
   can:`<svg viewBox='0 0 64 64' fill='none'><rect x='18' y='4' width='28' height='56' rx='6' stroke='#7dd3fc' stroke-width='3'/><rect x='22' y='10' width='20' height='44' rx='3' fill='#1a2744'/></svg>`,
   bottle:`<svg viewBox='0 0 64 64' fill='none'><path d='M28 6h8v8a8 8 0 0 1 4 7v30a8 8 0 0 1-8 8h0a8 8 0 0 1-8-8V21a8 8 0 0 1 4-7V6z' stroke='#7dd3fc' stroke-width='3' fill='#1a2744'/></svg>`,
@@ -342,7 +320,6 @@ const icons={
   baginbox:`<svg viewBox='0 0 64 64' fill='none'><rect x='10' y='12' width='44' height='40' rx='6' stroke='#7dd3fc' stroke-width='3' fill='none'/><circle cx='46' cy='44' r='6' stroke='#7dd3fc' stroke-width='3'/><path d='M44 44h4' stroke='#7dd3fc' stroke-width='3'/></svg>`,
   carton:`<svg viewBox='0 0 64 64' fill='none'><path d='M22 12h20l6 10v28a6 6 0 0 1-6 6H22a6 6 0 0 1-6-6V22l6-10z' stroke='#7dd3fc' stroke-width='3' fill='#1a2744'/><path d='M42 12l6 10H22' stroke='#7dd3fc' stroke-width='2'/><path d='M44 18c6 2 8 2 10 2' stroke='#7dd3fc' stroke-width='2'/></svg>`
 };
-
 const materials={
   ALUMINUM:{label:'Aluminum',unit:'lb',icon:icons.can},
   GLASS:{label:'Glass',unit:'lb',icon:icons.glass},
@@ -356,10 +333,10 @@ const materials={
   BIMETAL:{label:'Bi-metal',unit:'lb',icon:icons.steel},
   Pouch:{label:'Multi-Layer Pouch',unit:'lb',icon:icons.pouch},
   BagInBox:{label:'Bag-in-Box (wine)',unit:'lb',icon:icons.baginbox},
-  JuiceBox:{label:'Paperboard Carton',unit:'ea',icon:icons.carton}
+  JuiceBox:{label:'Paperboard Carton (BeatBox)',unit:'ea',icon:icons.carton}
 };
 
-let prices = JSON.parse(localStorage.getItem('sr_prices')||'null') || {
+let prices = JSON.parse(localStorage.getItem(PRICES_KEY)||'null') || {
   ALUMINUM:1.65,
   GLASS:0.102,
   PET1:1.47,
@@ -391,8 +368,7 @@ const order=[];
       g.appendChild(b);
     });
   };
-  build('#matGrid');
-  build('#matGridW');
+  build('#matGrid'); build('#matGridW');
 })();
 
 /* Modes, inputs, pencil */
@@ -414,24 +390,13 @@ function updatePanelsW(){
 on('#cntModeW','change',()=>{ updatePanelsW(); selectedMat=null; set('#pickedHintW','Enter value then choose.'); hideChoiceW(); });
 updatePanelsW();
 
-function autoPrep(sel){
-  const el=$(sel); if(!el) return;
-  if(el.value==='0'||el.value==='0.00') el.value='';
-  el.select?.();
-}
-function autoRestore(sel){
-  const el=$(sel); if(!el) return;
-  if(!el.value) el.value='0';
-}
+function autoPrep(sel){ const el=$(sel); if(!el) return; if(el.value==='0'||el.value==='0.00') el.value=''; el.select?.(); }
+function autoRestore(sel){ const el=$(sel); if(!el) return; if(!el.value) el.value='0'; }
 ['#pounds','#qty','#poundsW','#qtyW'].forEach(id=>{
   on(id,'focus', ()=>autoPrep(id));
   on(id,'blur',  ()=>autoRestore(id));
 });
-on('#editFab','click', ()=>{
-  restoreGrid();
-  const card=document.getElementById('materialsCard');
-  if(card) window.scrollTo({top:card.offsetTop-20, behavior:'smooth'});
-});
+on('#editFab','click', ()=>{ restoreGrid(); window.scrollTo({top:document.getElementById('materialsCard').offsetTop-20, behavior:'smooth'}); });
 
 /* Material choice flow */
 function onMaterial(key){
@@ -454,7 +419,6 @@ function onMaterial(key){
     if(!qty){ flashHint('Enter count first'); return; }
     showPanel();
     if(key==='BagInBox' || key==='Pouch' || key==='JuiceBox'){
-      // special items = 25¢ each
       p.append(makeBtn('25¢ each',()=>{addCountItem(0.25); restoreGrid(); if(isW) wizardGo(2,true);}));
     }else{
       p.append(
@@ -468,21 +432,11 @@ function onMaterial(key){
     showPanel();
     p.append(
       makeBtn('CRV',()=>{addWeightItem('CRV'); restoreGrid(); if(isW) wizardGo(2,true);} ),
-      makeBtn(key==='ALUMINUM' ? '$1.75/lb' : 'Non-CRV',()=>{
-        addWeightItem(key==='ALUMINUM' ? 'ALU175' : 'NON');
-        restoreGrid();
-        if(isW) wizardGo(2,true);
-      })
+      makeBtn(key==='ALUMINUM'?'$1.75/lb':'Non-CRV',()=>{addWeightItem(key==='ALUMINUM'?'ALU175':'NON'); restoreGrid(); if(isW) wizardGo(2,true);} )
     );
   }
 }
-function makeBtn(txt,fn){
-  const b=document.createElement('button');
-  b.className='btn primary';
-  b.textContent=txt;
-  b.addEventListener('click',fn);
-  return b;
-}
+function makeBtn(txt,fn){ const b=document.createElement('button'); b.className='btn primary'; b.textContent=txt; b.addEventListener('click',fn); return b; }
 function restoreGrid(){
   ['#choicePanel','#choicePanelW'].forEach(id=>{
     const p=$(id); if(p){ p.style.display='none'; }
@@ -547,11 +501,7 @@ function addWeightItem(kind){
   }
 
   order.push({
-    type:'weight',
-    mat:selectedMat,
-    lbs,
-    unitPrice:rate,
-    payoutKind:kind,
+    type:'weight', mat:selectedMat, lbs, unitPrice:rate, payoutKind:kind,
     subtotal,
     detail:`${tag} · ${lbs.toFixed(2)} lb × ${money(rate)}/lb${subtotal===0?' — no payout':''}`
   });
@@ -564,10 +514,7 @@ function addCountItem(per){
   const qty = isLandscapePhone() ? +($('#qtyW')?.value||0) : +($('#qty')?.value||0);
   if(!qty) return;
   order.push({
-    type:'crv',
-    mat:selectedMat,
-    qty,
-    unitPrice:per,
+    type:'crv',mat:selectedMat,qty,unitPrice:per,
     subtotal:qty*per,
     detail:`${qty} × ${(per===0.25?'25¢':per===0.10?'10¢':'5¢')}`
   });
@@ -590,9 +537,7 @@ function render(){
     set(crvSel, money(crv));
     set(wtSel, money(wt));
     set(grandSel, money(crv+wt));
-    tb.querySelectorAll('button[data-i]').forEach(b=>b.addEventListener('click',()=>{
-      order.splice(+b.dataset.i,1); render();
-    }));
+    tb.querySelectorAll('button[data-i]').forEach(b=>b.addEventListener('click',()=>{order.splice(+b.dataset.i,1); render();}));
     const printBtn=$(printBtnSel); if(printBtn) printBtn.disabled = order.length===0;
   };
   fill('#orderTable tbody','#crvTotal','#weightTotal','#grandTotal','#printLast');
@@ -612,9 +557,7 @@ function syncLayoutsVisibility(){
 }
 function validateStep(){
   if(!isLandscapePhone()) return;
-  const valid = isCountW()
-    ? (+($('#qtyW')?.value||0) > 0)
-    : (+($('#poundsW')?.value||0) > 0);
+  const valid = isCountW() ? (+($('#qtyW')?.value||0) > 0) : (+($('#poundsW')?.value||0) > 0);
   const nextBtn = $('#stepNext');
   if(step===0){ nextBtn.disabled = !valid; }
   if(step===1){ nextBtn.disabled = (order.length===0); }
@@ -631,8 +574,7 @@ function scrollToPanel(i){
 }
 function wizardGo(i){
   step = Math.max(0, Math.min(2, i));
-  updateDots();
-  validateStep();
+  updateDots(); validateStep();
   const nextBtn = $('#stepNext');
   if(step===0){ nextBtn.textContent='Next'; }
   if(step===1){ nextBtn.textContent='Next'; nextBtn.disabled=(order.length===0); }
@@ -660,29 +602,34 @@ function currentTotals(){
 on('#printLast', ()=>{ if(__lastSavedOrder) printReceipt(__lastSavedOrder); else alert('Save an order first.'); });
 on('#printLastW',()=>{ if(__lastSavedOrder) printReceipt(__lastSavedOrder); else alert('Save an order first.'); });
 
+function loadOrders(){
+  try{ return JSON.parse(localStorage.getItem(ORDERS_KEY)||'[]'); }
+  catch(e){ return []; }
+}
+function saveOrders(arr){
+  localStorage.setItem(ORDERS_KEY, JSON.stringify(arr.slice(0,100)));
+}
+
 async function saveOrderCommon(hintSel, printSel){
   set(hintSel,'');
   if(!order.length){ set(hintSel,'Add some items first.'); return; }
 
+  const all = loadOrders();
   const payload={
     id:'SR-'+Date.now(),
     when:new Date().toISOString(),
     items:[...order],
     totals: currentTotals()
   };
+  all.unshift(payload);
+  saveOrders(all);
 
-  try{
-    await window.cloud.saveOrder(payload);
-    __lastSavedOrder = payload;
-    const pb=document.querySelector(printSel); if(pb) pb.disabled=false;
-    order.splice(0,order.length); render();
-    set(hintSel,'Saved ✔ (on this device)');
-    if('vibrate' in navigator) navigator.vibrate?.(10);
-    setTimeout(()=>set(hintSel,''),1400);
-  }catch(e){
-    console.error('Save failed:', e);
-    set(hintSel,'Save failed: '+(e?.message||String(e)));
-  }
+  __lastSavedOrder = payload;
+  const pb=document.querySelector(printSel); if(pb) pb.disabled=false;
+  order.splice(0,order.length); render();
+  set(hintSel,'Saved ✔ (local only)');
+  if('vibrate' in navigator) navigator.vibrate?.(10);
+  setTimeout(()=>set(hintSel,''),1400);
 }
 on('#saveOrder',  ()=> saveOrderCommon('#saveHint','#printLast'));
 on('#saveOrderW', ()=> saveOrderCommon('#saveHintW','#printLastW'));
@@ -698,63 +645,62 @@ function buildPricesForm(){
     grid.appendChild(row);
   });
   const jb=document.createElement('div'); jb.className='row'; jb.style.flexDirection='column';
-  jb.innerHTML=`<label>Paperboard Carton – price each</label><input type='number' step='0.01' id='p_JuiceBox_each' value='${prices.JuiceBox_each??0.25}' placeholder='$/ea'>`;
+  jb.innerHTML=`<label>Paperboard Carton (BeatBox) – price each</label><input type='number' step='0.01' id='p_JuiceBox_each' value='${prices.JuiceBox_each??0.25}' placeholder='$/ea'>`;
   grid.appendChild(jb);
 }
 on('#savePrices','click', ()=>{
   const next={};
   Object.keys(materials).forEach(k=>{
     if(materials[k].unit==='lb'){
-      next[k]=+(($('#p_'+k)||{}).value||0)||0;
+      const el=$('#p_'+k);
+      next[k]=+(el && el.value ? el.value : 0) || 0;
     }
   });
-  next.JuiceBox_each=+(($('#p_JuiceBox_each')||{}).value||0.25)||0.25;
+  const jb=$('#p_JuiceBox_each');
+  next.JuiceBox_each=+(jb && jb.value ? jb.value : 0.25) || 0.25;
   prices={...prices,...next};
-  localStorage.setItem('sr_prices',JSON.stringify(prices));
+  localStorage.setItem(PRICES_KEY,JSON.stringify(prices));
   $('#pricesModal').close();
 });
 
 /* Orders modal */
-on('#viewOrders','click', async ()=>{
+on('#viewOrders','click', ()=>{
   const list=$('#ordersList'); list.innerHTML='';
-  try{
-    const all=await window.cloud.listOrders();
-    if(!all.length){
-      list.innerHTML='<div class="hint">No orders yet.</div>';
-      ordersModal.showModal(); return;
-    }
-    all.forEach(o=>{
-      const div=document.createElement('div'); div.className='card';
-      const header=document.createElement('div'); header.className='row'; header.style.justifyContent='space-between'; header.style.alignItems='center';
-      const left=document.createElement('b'); left.textContent=o.id;
-      const rbtn=document.createElement('button'); rbtn.className='btn'; rbtn.textContent='Receipt'; rbtn.addEventListener('click',()=>printReceipt(o));
-      const right=document.createElement('span'); right.className='hint'; right.textContent=new Date(o.when).toLocaleString();
-      header.append(left,rbtn,right);
-
-      const ul=document.createElement('ul');
-      ul.innerHTML=(o.items||[]).map(it=>`<li>${(materials[it.mat]||{label:it.mat}).label} — ${it.detail} <b>${money(it.subtotal)}</b></li>`).join('');
-
-      const totals=document.createElement('div'); totals.className='row'; totals.style.justifyContent='flex-end'; totals.style.gap='16px';
-      totals.innerHTML=`<span>CRV: <b>${o.totals?.crv||'$0.00'}</b></span><span>Weight: <b>${o.totals?.weight||'$0.00'}</b></span><span>Grand: <b>${o.totals?.grand||'$0.00'}</b></span>`;
-
-      div.append(header,ul,totals);
-      list.appendChild(div);
-    });
-    ordersModal.showModal();
-  }catch(e){
-    console.error(e);
-    list.innerHTML='<div class="hint">Read failed.</div>';
-    ordersModal.showModal();
+  const all=loadOrders();
+  if(!all.length){
+    list.innerHTML='<div class="hint">No orders yet.</div>';
+    ordersModal.showModal(); return;
   }
+  all.forEach(o=>{
+    const div=document.createElement('div'); div.className='card';
+    const header=document.createElement('div'); header.className='row'; header.style.justifyContent='space-between'; header.style.alignItems='center';
+    const left=document.createElement('b'); left.textContent=o.id;
+    const rbtn=document.createElement('button'); rbtn.className='btn'; rbtn.textContent='Receipt'; rbtn.addEventListener('click',()=>printReceipt(o));
+    const right=document.createElement('span'); right.className='hint'; right.textContent=new Date(o.when).toLocaleString();
+    header.append(left,rbtn,right);
+    const ul=document.createElement('ul');
+    ul.innerHTML=(o.items||[]).map(it=>`<li>${(materials[it.mat]||{label:it.mat}).label} — ${it.detail} <b>${money(it.subtotal)}</b></li>`).join('');
+    const totals=document.createElement('div'); totals.className='row'; totals.style.justifyContent='flex-end'; totals.style.gap='16px';
+    totals.innerHTML=`<span>CRV: <b>${o.totals?.crv||'$0.00'}</b></span><span>Weight: <b>${o.totals?.weight||'$0.00'}</b></span><span>Grand: <b>${o.totals?.grand||'$0.00'}</b></span>`;
+    div.append(header,ul,totals); list.appendChild(div);
+  });
+  ordersModal.showModal();
 });
 
-/* ----- Receipt Printing (simple) ----- */
+/* ----- Receipt Printing (GRAND TOTAL only) ----- */
 function buildReceiptHTML(order){
   const items = (order.items||[]);
   const lines = items.map(it=>{
     const name=(materials[it.mat]||{label:it.mat}).label;
-    return `<tr><td>${name}</td><td>${it.detail}</td><td style="text-align:right;">${money(it.subtotal)}</td></tr>`;
+    const noPay = (it.type==='weight' && (it.payoutKind==='NON' || (typeof it.subtotal==='number' && it.subtotal===0)));
+    return `<tr><td>${name}</td><td>${it.detail}${noPay?'':' '}</td></tr>`;
   }).join('');
+
+  const lbsTotal = items.filter(it=>it.type==='weight').reduce((a,b)=>a+(+b.lbs||0),0);
+  const lbsNoPay = items
+    .filter(it=>it.type==='weight' && (it.payoutKind==='NON' || (typeof it.subtotal==='number' && it.subtotal===0)))
+    .reduce((a,b)=>a+(+b.lbs||0),0);
+  const cntCRV  = items.filter(it=>it.type==='crv').reduce((a,b)=>a+(+b.qty||0),0);
 
   const grand = order.totals?.grand || '$0.00';
   const when  = new Date(order.when||Date.now()).toLocaleString();
@@ -763,24 +709,44 @@ function buildReceiptHTML(order){
   return `<!doctype html><html><head><meta charset="utf-8"><title>Receipt ${id}</title>
   <style>@media print{@page{margin:8mm}body{margin:0}}body{font-family:ui-monospace,Menlo,Consolas,monospace;color:#111;padding:12px;line-height:1.25}
   .center{text-align:center}.small{font-size:12px;color:#333}table{width:100%;border-collapse:collapse;margin-top:6px}
-  th,td{padding:4px 0;border-bottom:1px dashed #ccc;font-size:14px}thead th{border-bottom:1px solid #000}</style>
+  th,td{padding:4px 0;border-bottom:1px dashed #ccc;font-size:14px}thead th{border-bottom:1px solid #000}
+  .logo{font-weight:700;letter-spacing:.5px;font-size:16px}.muted{color:#666}
+  .box{border:1px dashed #bbb;padding:6px;border-radius:8px;margin-top:8px}</style>
   </head><body>
-    <div class="center">Recycling Receipt</div>
+    <div class="center logo">Recycling Receipt</div>
     <div class="center small">${when}</div>
     <div class="small">Order ID: <b>${id}</b></div>
+
     <table>
-      <thead><tr><th style="text-align:left">Item</th><th style="text-align:left">Detail</th><th style="text-align:right">Subtotal</th></tr></thead>
-      <tbody>${lines || '<tr><td colspan="3" class="small">No items</td></tr>'}</tbody>
+      <thead><tr><th style="text-align:left">Item</th><th style="text-align:left">Detail</th></tr></thead>
+      <tbody>${lines || '<tr><td colspan="2" class="muted">No items</td></tr>'}</tbody>
       <tfoot>
-        <tr><td colspan="3" style="text-align:right;font-size:16px;border-top:1px solid #000;margin-top:6px">GRAND TOTAL: ${grand}</td></tr>
+        <tr><td colspan="2" style="text-align:right;font-size:16px">GRAND TOTAL: <span style="display:inline-block;min-width:96px">${grand}</span></td></tr>
       </tfoot>
     </table>
+
+    <div class="box">
+      <div class="small">Summary</div>
+      <div class="small">Weight received: <b>${lbsTotal.toFixed(2)} lb</b> &nbsp; | &nbsp; Non-CRV (no payout): <b>${lbsNoPay.toFixed(2)} lb</b> &nbsp; | &nbsp; CRV containers: <b>${cntCRV}</b></div>
+      <div class="small muted">Non-CRV materials are accepted but do not pay out. Thanks for keeping recyclables out of landfill!</div>
+    </div>
+
     <script>
       window.onload = function(){
-        window.print();
-        setTimeout(function(){ window.close(); }, 300);
+        setTimeout(function(){
+          window.print();
+          setTimeout(function(){ window.close(); }, 300);
+        }, 200);
       };
     <\/script>
   </body></html>`;
 }
 function printReceipt(order){
+  if(!order){ alert('No order to print'); return; }
+  const w=window.open('','receipt');
+  w.document.write(buildReceiptHTML(order));
+  w.document.close();
+}
+</script>
+</body>
+</html>
