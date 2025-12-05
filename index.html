@@ -69,6 +69,15 @@
     }
   }
 </style>
+
+<!-- QR + Scanner libs -->
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js"></script>
+
+<!-- Firebase compat (easier in browser) -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
@@ -77,6 +86,8 @@
     <header>
       <h1>Recycling<span class="badge">POS</span></h1>
       <div class="row" style="gap:8px;align-items:center">
+        <span id="cloudStatus" class="pill">Cloud: offline</span>
+        <button id="scanBtn" class="btn">Scan</button>
         <button id="openPrices" class="btn">Prices</button>
         <button id="viewOrders" class="btn">Orders</button>
         <button id="themeBtn" class="btn" title="Toggle theme">☀︎/🌙</button>
@@ -184,6 +195,40 @@
       <div id="ordersList"></div>
     </div>
   </dialog>
+
+  <!-- Code Modal -->
+  <dialog id="barcodeModal" style="border:0;padding:0;border-radius:16px;background:var(--card);color:var(--ink);width:min(560px,96vw)">
+    <div class="card" style="border:0">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <h3 style="margin:0">Order Code</h3>
+        <div class="row">
+          <button id="printBar" class="btn">Print</button>
+          <button class="btn" onclick="barcodeModal.close()">✕</button>
+        </div>
+      </div>
+      <div class="center" style="width:100%;text-align:center">
+        <canvas id="qrCanvas" style="width:100%;max-width:320px;height:auto"></canvas>
+      </div>
+      <div class="hint" id="barcodeHint" style="margin-top:8px;word-break:break-all;text-align:center"></div>
+    </div>
+  </dialog>
+
+  <!-- Scanner Modal -->
+  <dialog id="scanModal" style="border:0;padding:0;border-radius:16px;background:var(--card);color:var(--ink);width:min(720px,96vw)">
+    <div class="card" style="border:0">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <h3 style="margin:0">Scan Code</h3>
+        <button class="btn" onclick="stopScan();scanModal.close()">✕</button>
+      </div>
+      <video id="video" playsinline style="width:100%;border-radius:12px;background:#000"></video>
+      <div class="row" style="justify-content:space-between;margin-top:6px">
+        <span class="pill" id="camState">Camera: idle</span>
+        <button id="startCam" class="btn primary">Start</button>
+      </div>
+      <div id="scanResult" class="hint" style="margin-top:8px">Point camera at QR or barcode.</div>
+      <div id="scanOrder" style="display:none"></div>
+    </div>
+  </dialog>
 </div>
 
 <script>
@@ -192,6 +237,7 @@ const $ = (q)=>document.querySelector(q);
 const on = (sel, evt, fn)=>{ const el=$(sel); if(el) el.addEventListener(evt, fn, {passive:true}); };
 const set = (sel, text)=>{ const el=$(sel); if(el) el.textContent = text; };
 const money = (n)=> (isNaN(n)?0:n).toLocaleString(undefined,{style:'currency',currency:'USD'});
+const setCloud = (text)=> set('#cloudStatus', text);
 
 /* Theme toggle */
 (function(){
@@ -407,7 +453,33 @@ function render(){
   tb.querySelectorAll('button[data-i]').forEach(b=>b.addEventListener('click',()=>{order.splice(+b.dataset.i,1); render();}));
   $('#printLast').disabled = order.length===0;
 }
-on('#clearOrder','click',()=>{ order.splice(0,order.length); render(); });
+
+/* Clear with confirmation (double-click within 2s) */
+let clearConfirm=false;
+on('#clearOrder','click',()=>{
+  if(!order.length) return;
+  const btn = $('#clearOrder');
+  if(!clearConfirm){
+    clearConfirm=true;
+    const prevText = btn.textContent;
+    btn.dataset.prev = prevText;
+    btn.textContent = 'Confirm';
+    set('#saveHint','Tap Clear again to confirm.');
+    setTimeout(()=>{
+      if(clearConfirm){
+        clearConfirm=false;
+        btn.textContent = btn.dataset.prev || 'Clear';
+        set('#saveHint','');
+      }
+    },2000);
+    return;
+  }
+  clearConfirm=false;
+  btn.textContent = btn.dataset.prev || 'Clear';
+  set('#saveHint','');
+  order.splice(0,order.length);
+  render();
+});
 
 /* Save order + orders list */
 let __lastSavedOrder = null;
@@ -428,28 +500,35 @@ function saveOrders(arr){
   localStorage.setItem(ORDERS_KEY, JSON.stringify(arr.slice(0,100)));
 }
 
-function saveOrderCommon(){
+async function saveOrderCommon(){
   set('#saveHint','');
   if(!order.length){ set('#saveHint','Add some items first.'); return; }
 
-  const all = loadOrders();
   const payload={
     id:'SR-'+Date.now(),
     when:new Date().toISOString(),
     items:[...order],
     totals: currentTotals()
   };
+
+  // local
+  const all = loadOrders();
   all.unshift(payload);
   saveOrders(all);
+
+  // cloud (best effort)
+  try{
+    if(window.cloud) await window.cloud.saveOrder(payload);
+  }catch(e){ console.warn('cloud save failed',e); }
 
   __lastSavedOrder = payload;
   $('#printLast').disabled=false;
   order.splice(0,order.length); render();
-  set('#saveHint','Saved ✔ (local only)');
+  set('#saveHint','Saved ✔');
   if('vibrate' in navigator) navigator.vibrate?.(10);
   setTimeout(()=>set('#saveHint',''),1400);
 }
-on('#saveOrder', saveOrderCommon);
+on('#saveOrder', ()=>{ saveOrderCommon(); });
 
 /* Prices modal */
 on('#openPrices','click', ()=>{ buildPricesForm(); $('#pricesModal').showModal(); });
@@ -465,7 +544,7 @@ function buildPricesForm(){
   jb.innerHTML=`<label>Paperboard Carton (BeatBox) – price each</label><input type='number' step='0.01' id='p_JuiceBox_each' value='${prices.JuiceBox_each??0.25}' placeholder='$/ea'>`;
   grid.appendChild(jb);
 }
-on('#savePrices','click', ()=>{
+on('#savePrices','click', async ()=>{
   const next={};
   Object.keys(materials).forEach(k=>{
     if(materials[k].unit==='lb'){
@@ -477,14 +556,33 @@ on('#savePrices','click', ()=>{
   next.JuiceBox_each=+(jb && jb.value ? jb.value : 0.25) || 0.25;
   prices={...prices,...next};
   localStorage.setItem(PRICES_KEY,JSON.stringify(prices));
+
+  try{
+    if(window.cloud) await window.cloud.setPrices(prices);
+    set('#priceSyncState','Prices synced to cloud');
+  }catch(e){
+    set('#priceSyncState','Prices stored locally (cloud failed)');
+  }
   $('#pricesModal').close();
 });
 
-/* Orders modal */
-on('#viewOrders','click', ()=>{
+/* Orders modal (cloud if online, else local) */
+on('#viewOrders','click', async ()=>{
   const list=$('#ordersList'); list.innerHTML='';
-  const all=loadOrders();
-  if(!all.length){
+  let all=[];
+  try{
+    if(window.cloud && window.firebaseReady){
+      all = await window.cloud.listOrders();
+      if(all && all.length) saveOrders(all); // mirror to local
+    }else{
+      all = loadOrders();
+    }
+  }catch(e){
+    console.warn('orders cloud list failed',e);
+    all = loadOrders();
+  }
+
+  if(!all || !all.length){
     list.innerHTML='<div class="hint">No orders yet.</div>';
     ordersModal.showModal(); return;
   }
@@ -492,9 +590,17 @@ on('#viewOrders','click', ()=>{
     const div=document.createElement('div'); div.className='card';
     const header=document.createElement('div'); header.className='row'; header.style.justifyContent='space-between'; header.style.alignItems='center';
     const left=document.createElement('b'); left.textContent=o.id;
-    const rbtn=document.createElement('button'); rbtn.className='btn'; rbtn.textContent='Receipt'; rbtn.addEventListener('click',()=>printReceipt(o));
+
+    const codeBtn=document.createElement('button'); codeBtn.className='btn primary'; codeBtn.textContent='Code';
+    codeBtn.addEventListener('click',()=>showBarcode(o.id));
+
+    const rbtn=document.createElement('button'); rbtn.className='btn'; rbtn.textContent='Receipt';
+    rbtn.style.marginLeft='6px';
+    rbtn.addEventListener('click',()=>printReceipt(o));
+
     const right=document.createElement('span'); right.className='hint'; right.textContent=new Date(o.when).toLocaleString();
-    header.append(left,rbtn,right);
+    header.append(left,codeBtn,rbtn,right);
+
     const ul=document.createElement('ul');
     ul.innerHTML=(o.items||[]).map(it=>`<li>${(materials[it.mat]||{label:it.mat}).label} — ${it.detail} <b>${money(it.subtotal)}</b></li>`).join('');
     const totals=document.createElement('div'); totals.className='row'; totals.style.justifyContent='flex-end'; totals.style.gap='16px';
@@ -503,6 +609,110 @@ on('#viewOrders','click', ()=>{
   });
   ordersModal.showModal();
 });
+
+/* ----- QR code for order IDs ----- */
+function codeColors(){
+  const isLight = document.documentElement.getAttribute('data-theme')==='light';
+  return isLight
+    ? { dark:'#111111', light:'#ffffff' }
+    : { dark:'#ffffff', light:'#0f1730' };
+}
+function showBarcode(text){
+  set('#barcodeHint', text);
+  try{
+    const canvas = $('#qrCanvas');
+    const cc = codeColors();
+    QRCode.toCanvas(canvas, text, { width: 320, margin: 1, color:{ dark: cc.dark, light: cc.light } }, function(err){
+      if(err) console.warn('QR error', err);
+    });
+  }catch(e){ console.warn('QR lib error', e); }
+  $('#barcodeModal').showModal();
+}
+on('#printBar','click', ()=>{
+  const canvas=$('#qrCanvas');
+  const w=window.open('','printqr');
+  const html=`<!doctype html><html><head><meta charset="utf-8"><title>Order Code</title>
+  <style>body{margin:0;padding:20px;text-align:center;background:#fff}</style></head>
+  <body><img src="${canvas.toDataURL('image/png')}" style="max-width:320px;width:100%">
+  <script>window.onload=function(){setTimeout(function(){window.print();setTimeout(function(){window.close();},300);},200);};<\/script>
+  </body></html>`;
+  w.document.write(html);
+  w.document.close();
+});
+
+/* ----- Scanner (ZXing) ----- */
+let stream=null, codeReader=null;
+const scanModalEl = document.getElementById('scanModal');
+if(scanModalEl){
+  scanModalEl.addEventListener('close', stopScan, {passive:true});
+  scanModalEl.addEventListener('cancel', stopScan, {passive:true});
+}
+on('#scanBtn','click', ()=>{
+  $('#scanOrder').style.display='none';
+  set('#scanResult','Point camera at QR or barcode.');
+  $('#scanModal').showModal();
+});
+async function startScan(){
+  try{
+    if(!navigator.mediaDevices?.getUserMedia){
+      set('#camState','Camera: unsupported in this browser');
+      return;
+    }
+    const constraints = { video: { facingMode: { ideal: 'environment' } } };
+    set('#camState','Camera: starting…');
+    stream = await navigator.mediaDevices.getUserMedia(constraints);
+    const v=$('#video'); v.srcObject=stream; await v.play();
+    set('#camState','Camera: on ✔');
+    codeReader = new ZXing.BrowserMultiFormatReader();
+    await codeReader.decodeFromVideoDevice(null, v, async (result, err)=>{
+      if(result){
+        const val = result.getText ? result.getText() : (result.text || '');
+        if(val){ await onScan(val); }
+      }
+    });
+  }catch(e){ set('#camState','Camera: error'); alert(e.message||e); }
+}
+function stopScan(){
+  try{
+    if(codeReader){ codeReader.reset(); codeReader=null; }
+    if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+    set('#camState','Camera: idle');
+  }catch(e){}
+}
+on('#startCam','click', ()=>{ if(stream){ stopScan(); } else { startScan(); } });
+
+async function onScan(val){
+  if(!val) return;
+  stopScan();
+  set('#scanResult','Scanned: '+val);
+  let o=null;
+  try{
+    if(window.cloud) o = await window.cloud.getOrder(val);
+  }catch(e){}
+  if(!o){
+    const all = loadOrders();
+    o = all.find(x=>x.id===val) || null;
+  }
+  const panel = $('#scanOrder');
+  if(o){
+    const rows=(o.items||[]).map(it=>`<li>${(materials[it.mat]||{label:it.mat}).label} — ${it.detail} <b>${money(it.subtotal)}</b></li>`).join('');
+    panel.style.display='block';
+    panel.innerHTML=`<h3 style='margin:10px 0'>${o.id}</h3>
+      <div class='hint'>${new Date(o.when).toLocaleString()}</div>
+      <ul>${rows}</ul>
+      <div class='row' style='justify-content:flex-end;gap:16px'>
+        <span>CRV: <b>${o.totals?.crv||'$0.00'}</b></span>
+        <span>Weight: <b>${o.totals?.weight||'$0.00'}</b></span>
+        <span>Grand: <b>${o.totals?.grand||'$0.00'}</b></span>
+      </div>
+      <div class='row' style='justify-content:center;margin-top:10px'>
+        <button class='btn primary' onclick='(${startScan.toString()})();'>Scan Again</button>
+      </div>`;
+  } else {
+    panel.style.display='block';
+    panel.innerHTML = "<div class='hint'>No matching order found (cloud/local).</div>";
+  }
+}
 
 /* ----- Receipt Printing (GRAND TOTAL only) ----- */
 function buildReceiptHTML(order){
@@ -564,6 +774,69 @@ function printReceipt(order){
   w.document.write(buildReceiptHTML(order));
   w.document.close();
 }
+
+/* ----- Firebase: anonymous auth + Firestore ----- */
+window.cloud = null;
+window.firebaseReady = false;
+
+const fbCfg = {
+  apiKey: "AIzaSyCSRYYjuJyO6_N2n9RaA8T2fXRaHiC3q6o",
+  authDomain: "recycle-cb24b.firebaseapp.com",
+  projectId: "recycle-cb24b",
+  storageBucket: "recycle-cb24b.firebasestorage.app",
+  messagingSenderId: "281209650356",
+  appId: "1:281209650356:web:a3b55a3b4d7ce5e642abe1",
+  measurementId: "G-4DFFS1RH83"
+};
+
+(function initFirebase(){
+  if(typeof firebase === 'undefined'){ setCloud('Cloud: unavailable'); return; }
+  try{
+    const app = firebase.initializeApp(fbCfg);
+    const auth = firebase.auth();
+    const db   = firebase.firestore();
+
+    db.enablePersistence({synchronizeTabs:true}).catch(()=>{});
+
+    auth.onAuthStateChanged((user)=>{
+      if(user){
+        window.firebaseReady = true;
+        setCloud('Cloud: online');
+        window.cloud = {
+          async saveOrder(o){ return db.collection('orders').doc(o.id).set(o); },
+          async getOrder(id){ const s=await db.collection('orders').doc(id).get(); return s.exists? s.data(): null; },
+          async listOrders(){ const s=await db.collection('orders').orderBy('when','desc').limit(100).get(); return s.docs.map(d=>d.data()); },
+          async getPrices(){ const s=await db.collection('settings').doc('prices').get(); return s.exists? s.data(): null; },
+          async setPrices(map){ return db.collection('settings').doc('prices').set({ map, updatedAt: new Date().toISOString() }); }
+        };
+
+        // try pulling latest cloud prices once
+        (async ()=>{
+          try{
+            const doc = await window.cloud.getPrices();
+            if(doc && doc.map){
+              prices = {...prices, ...doc.map};
+              localStorage.setItem(PRICES_KEY, JSON.stringify(prices));
+            }
+          }catch(e){}
+        })();
+      }else{
+        setCloud('Cloud: signing in…');
+      }
+    });
+
+    // anonymous sign-in so you don't need a password
+    auth.signInAnonymously().catch((e)=>{
+      console.warn('anon auth failed',e);
+      setCloud('Cloud: auth failed');
+    });
+
+    setCloud('Cloud: connecting…');
+  }catch(e){
+    console.error('Firebase init error', e);
+    setCloud('Cloud: error');
+  }
+})();
 </script>
 </body>
 </html>
