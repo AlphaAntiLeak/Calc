@@ -51,11 +51,15 @@
   .mat-btn span{font-size:.8rem; text-align:center}
   .fab{position:fixed; right:16px; bottom:16px; width:56px; height:56px; border-radius:999px; background:color-mix(in oklab, var(--card) 80%, #1f2b45); border:1px solid #2a3e6633; display:none; align-items:center; justify-content:center; box-shadow:0 8px 24px rgba(0,0,0,.20)}
 
-  @media (max-width:420px){ header .row{gap:6px} .btn{padding:10px 12px} .grid{grid-template-columns:repeat(3,1fr)} }
+  @media (max-width:420px){
+    header .row{gap:6px}
+    .btn{padding:10px 12px}
+    .grid{grid-template-columns:repeat(3,1fr)}
+  }
 
-  /* iPhone 15 Pro Max (portrait) */
+  /* iPhone 15 Pro Max (portrait tweaks) */
   @supports (-webkit-touch-callout: none) {
-    @media screen and (device-width:430px) and (device-height:932px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait) {
+    @media screen and (device-width:430px) and (device-height:932px) and (-webkit-device-pixel-ratio:3) {
       .wrap{padding:12px}
       .btn{padding:14px 16px}
       .grid{grid-template-columns:repeat(4,1fr)}
@@ -63,37 +67,7 @@
       header .row{gap:6px}
       body{padding-bottom:calc(env(safe-area-inset-bottom) + 8px)}
     }
-    /* iPhone 15 Pro Max (LANDSCAPE): wizard mode */
-    @media screen and (device-width:932px) and (device-height:430px) and (-webkit-device-pixel-ratio:3) and (orientation:landscape) {
-      .wrap{max-width:none;padding:10px}
-      .landscape-hide{display:none!important}
-      .wizard{display:flex; overflow-x:hidden; height:calc(100vh - 72px); gap:0}
-      .panel{flex:0 0 100%; padding:10px; overflow:auto}
-      .panel > .card{margin-bottom:10px}
-      #wizardNav{display:flex}
-    }
   }
-  /* Generic phones in LANDSCAPE → wizard */
-  @media (orientation:landscape) and (max-height:480px){
-    .wrap{max-width:none;padding:10px}
-    .landscape-hide{display:none!important}
-    .wizard{display:flex; overflow-x:hidden; height:calc(100vh - 72px); gap:0}
-    .panel{flex:0 0 100%; padding:10px; overflow:auto}
-    .panel > .card{margin-bottom:10px}
-    #wizardNav{display:flex}
-  }
-
-  /* Wizard nav */
-  #wizardNav{
-    display:none; position:fixed; left:0; right:0; bottom:0;
-    padding:8px max(10px, env(safe-area-inset-left)) calc(8px + env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-right));
-    background:linear-gradient(180deg, transparent, color-mix(in oklab, var(--bg2) 80%, #000 10%));
-    backdrop-filter: blur(6px);
-    align-items:center; justify-content:space-between; gap:10px; z-index:50;
-  }
-  .dots{display:flex; gap:6px}
-  .dot{width:8px; height:8px; border-radius:50%; background:#516891}
-  .dot.active{background:var(--accent)}
 </style>
 </head>
 <body>
@@ -109,8 +83,8 @@
       </div>
     </header>
 
-    <!-- Regular layout (portrait/desktop) -->
-    <div id="regularLayout">
+    <!-- MAIN LAYOUT (same on mobile + web) -->
+    <div id="mainLayout">
       <div class="row" style="margin-top:12px">
         <!-- ENTRY -->
         <div id="entryCard" class="card" style="flex:1;min-width:280px">
@@ -176,80 +150,9 @@
       </div>
     </div>
 
-    <!-- LANDSCAPE WIZARD (phones only) -->
-    <div id="wizardLayout" class="wizard landscape-hide">
-      <section class="panel" id="panelEnter">
-        <div class="card">
-          <div class="row" style="justify-content:space-between;align-items:center">
-            <b>Step 1 — Enter</b>
-            <label class="row" style="align-items:center;gap:6px">
-              <input type="checkbox" id="cntModeW"><span class="hint">CNT (Count)</span>
-            </label>
-          </div>
-          <div id="weightBoxW" class="card" style="margin-top:10px">
-            <label for="poundsW">Weight (lb)</label>
-            <input id="poundsW" type="number" step="0.01" inputmode="decimal" min="0" value="0" enterkeyhint="next">
-            <div class="hint" id="weightPreviewW">$0.00</div>
-          </div>
-          <div id="countBoxW" class="card" style="margin-top:10px;display:none">
-            <label for="qtyW">Count</label>
-            <input id="qtyW" type="number" inputmode="numeric" pattern="[0-9]*" value="0" min="0" enterkeyhint="next">
-            <div class="hint" id="countPreviewW">$0.00</div>
-          </div>
-        </div>
-      </section>
-
-      <section class="panel" id="panelMaterials">
-        <div class="card">
-          <b>Step 2 — Pick Material</b>
-          <div id="matGridW" class="grid" style="margin-top:8px"></div>
-          <div id="choicePanelW" class="row" style="gap:10px;display:none;flex-wrap:wrap"></div>
-          <div class="hint" id="pickedHintW">
-            Enter value in Step 1, then choose. Special: Bag-in-Box / Pouch / Carton = 25¢ each.
-            <b>Non-CRV has no payout.</b>
-          </div>
-        </div>
-      </section>
-
-      <section class="panel" id="panelOrder">
-        <div class="card">
-          <b>Step 3 — Order</b>
-          <div class="hint" id="chosenMatLabelW" style="margin:4px 0 8px">Material: —</div>
-          <table id="orderTableW">
-            <thead><tr><th>Item</th><th>Detail</th><th class="pricecell">Subtotal</th><th></th></tr></thead>
-            <tbody></tbody>
-            <tfoot>
-              <tr><td colspan="2">CRV total</td><td class="pricecell" id="crvTotalW">$0.00</td><td></td></tr>
-              <tr><td colspan="2">Weight total</td><td class="pricecell" id="weightTotalW">$0.00</td><td></td></tr>
-              <tr><td colspan="2">Grand total</td><td class="pricecell" id="grandTotalW">$0.00</td><td></td></tr>
-            </tfoot>
-          </table>
-          <div class="sticky-bottom" style="margin-top:6px">
-            <div class="row" style="justify-content:space-between;gap:8px">
-              <button id="clearOrderW" class="btn danger">Clear</button>
-              <div class="row" style="gap:8px">
-                <button id="printLastW" class="btn" disabled>Receipt</button>
-                <button id="saveOrderW" class="btn success">Save Order</button>
-              </div>
-            </div>
-            <p class="hint" id="saveHintW"></p>
-          </div>
-        </div>
-      </section>
-    </div>
-
-    <!-- Wizard nav (phones landscape) -->
-    <div id="wizardNav" class="row">
-      <button id="stepPrev" class="btn">Back</button>
-      <div class="dots">
-        <span class="dot" id="d0"></span><span class="dot" id="d1"></span><span class="dot" id="d2"></span>
-      </div>
-      <button id="stepNext" class="btn primary" disabled>Next</button>
-    </div>
-
   </div> <!-- /wrap -->
 
-  <!-- Floating pencil -->
+  <!-- Floating pencil (scroll back to materials when grid is hidden) -->
   <button id="editFab" class="fab" aria-label="Back to materials" title="Back to materials"><span>✎</span></button>
 
   <!-- Prices Modal -->
@@ -288,9 +191,7 @@
 const $ = (q)=>document.querySelector(q);
 const on = (sel, evt, fn)=>{ const el=$(sel); if(el) el.addEventListener(evt, fn, {passive:true}); };
 const set = (sel, text)=>{ const el=$(sel); if(el) el.textContent = text; };
-const show = (sel, yes=true)=>{ const el=$(sel); if(!el) return; el.classList.toggle('hidden', !yes); };
 const money = (n)=> (isNaN(n)?0:n).toLocaleString(undefined,{style:'currency',currency:'USD'});
-const isLandscapePhone = ()=> window.matchMedia('(orientation:landscape) and (max-height: 480px)').matches();
 
 /* Theme toggle */
 (function(){
@@ -355,106 +256,83 @@ let prices = JSON.parse(localStorage.getItem(PRICES_KEY)||'null') || {
 let selectedMat=null;
 const order=[];
 
-/* Build material grids */
+/* Build material grid */
 (function(){
-  const build=(gridId)=>{
-    const g=$(gridId); if(!g) return;
-    g.innerHTML='';
-    Object.entries(materials).forEach(([k,v])=>{
-      const b=document.createElement('button');
-      b.className='mat-btn';
-      b.innerHTML=`${v.icon}<span>${v.label}</span>`;
-      b.addEventListener('click',()=>onMaterial(k));
-      g.appendChild(b);
-    });
-  };
-  build('#matGrid'); build('#matGridW');
+  const g=$('#matGrid');
+  g.innerHTML='';
+  Object.entries(materials).forEach(([k,v])=>{
+    const b=document.createElement('button');
+    b.className='mat-btn';
+    b.innerHTML=`${v.icon}<span>${v.label}</span>`;
+    b.addEventListener('click',()=>onMaterial(k));
+    g.appendChild(b);
+  });
 })();
 
-/* Modes, inputs, pencil */
+/* CNT vs weight */
 function isCount(){ return $('#cntMode')?.checked; }
 function updatePanels(){
-  if(!$('#countBox')) return;
   $('#countBox').style.display=isCount()?'block':'none';
   $('#weightBox').style.display=isCount()?'none':'block';
 }
 on('#cntMode','change',()=>{ updatePanels(); restoreGrid(); });
 updatePanels();
 
-function isCountW(){ return $('#cntModeW')?.checked; }
-function updatePanelsW(){
-  $('#countBoxW').style.display=isCountW()?'block':'none';
-  $('#weightBoxW').style.display=isCountW()?'none':'block';
-  validateStep();
-}
-on('#cntModeW','change',()=>{ updatePanelsW(); selectedMat=null; set('#pickedHintW','Enter value then choose.'); hideChoiceW(); });
-updatePanelsW();
-
+/* Input helpers */
 function autoPrep(sel){ const el=$(sel); if(!el) return; if(el.value==='0'||el.value==='0.00') el.value=''; el.select?.(); }
 function autoRestore(sel){ const el=$(sel); if(!el) return; if(!el.value) el.value='0'; }
-['#pounds','#qty','#poundsW','#qtyW'].forEach(id=>{
+['#pounds','#qty'].forEach(id=>{
   on(id,'focus', ()=>autoPrep(id));
   on(id,'blur',  ()=>autoRestore(id));
 });
 on('#editFab','click', ()=>{ restoreGrid(); window.scrollTo({top:document.getElementById('materialsCard').offsetTop-20, behavior:'smooth'}); });
 
-/* Material choice flow */
+/* Material flow */
 function onMaterial(key){
   selectedMat=key;
   set('#chosenMatLabel','Material: '+materials[key].label);
-  set('#chosenMatLabelW','Material: '+materials[key].label);
 
-  const isW = isLandscapePhone();
-  const p = isW ? $('#choicePanelW') : $('#choicePanel'); p.innerHTML='';
-  const grid = isW ? $('#matGridW') : $('#matGrid');
+  const p = $('#choicePanel'); p.innerHTML='';
+  const grid = $('#matGrid');
 
   const showPanel = ()=>{
     grid.style.display='none';
     p.style.display='flex';
-    $('#editFab').style.display = isW ? 'none' : 'flex';
+    $('#editFab').style.display = 'flex';
   };
 
-  if((isW ? isCountW() : isCount())){
-    const qty=+((isW?$('#qtyW'):$('#qty'))?.value||0);
+  if(isCount()){
+    const qty=+($('#qty')?.value||0);
     if(!qty){ flashHint('Enter count first'); return; }
     showPanel();
     if(key==='BagInBox' || key==='Pouch' || key==='JuiceBox'){
-      p.append(makeBtn('25¢ each',()=>{addCountItem(0.25); restoreGrid(); if(isW) wizardGo(2,true);}));
+      p.append(makeBtn('25¢ each',()=>{addCountItem(0.25); restoreGrid();}));
     }else{
       p.append(
-        makeBtn('< 24 oz (5¢)', ()=>{addCountItem(0.05); restoreGrid(); if(isW) wizardGo(2,true);} ),
-        makeBtn('≥ 24 oz (10¢)',()=>{addCountItem(0.10); restoreGrid(); if(isW) wizardGo(2,true);} )
+        makeBtn('< 24 oz (5¢)', ()=>{addCountItem(0.05); restoreGrid();} ),
+        makeBtn('≥ 24 oz (10¢)',()=>{addCountItem(0.10); restoreGrid();} )
       );
     }
   }else{
-    const lbs=+((isW?$('#poundsW'):$('#pounds'))?.value||0);
+    const lbs=+($('#pounds')?.value||0);
     if(!lbs){ flashHint('Enter weight first'); return; }
     showPanel();
     p.append(
-      makeBtn('CRV',()=>{addWeightItem('CRV'); restoreGrid(); if(isW) wizardGo(2,true);} ),
-      makeBtn(key==='ALUMINUM'?'$1.75/lb':'Non-CRV',()=>{addWeightItem(key==='ALUMINUM'?'ALU175':'NON'); restoreGrid(); if(isW) wizardGo(2,true);} )
+      makeBtn('CRV',()=>{addWeightItem('CRV'); restoreGrid();} ),
+      makeBtn(key==='ALUMINUM'?'$1.75/lb':'Non-CRV',()=>{addWeightItem(key==='ALUMINUM'?'ALU175':'NON'); restoreGrid();} )
     );
   }
 }
 function makeBtn(txt,fn){ const b=document.createElement('button'); b.className='btn primary'; b.textContent=txt; b.addEventListener('click',fn); return b; }
 function restoreGrid(){
-  ['#choicePanel','#choicePanelW'].forEach(id=>{
-    const p=$(id); if(p){ p.style.display='none'; }
-  });
-  ['#matGrid','#matGridW'].forEach(id=>{
-    const g=$(id); if(g){ g.style.display='grid'; }
-  });
+  const p=$('#choicePanel'); if(p) p.style.display='none';
+  const g=$('#matGrid'); if(g) g.style.display='grid';
   set('#chosenMatLabel','Material: —');
-  set('#chosenMatLabelW','Material: —');
   selectedMat=null;
   $('#editFab').style.display='none';
 }
-function hideChoiceW(){
-  const p=$('#choicePanelW'); if(p){ p.style.display='none'; }
-  const g=$('#matGridW'); if(g){ g.style.display='grid'; }
-}
 function flashHint(msg){
-  const el = isLandscapePhone() ? $('#pickedHintW') : $('#pickedHint');
+  const el = $('#pickedHint');
   if(!el) return;
   const prev=el.textContent;
   el.textContent=msg;
@@ -471,22 +349,11 @@ on('#qty','input',    ()=>{
   const qty=+($('#qty')?.value||0);
   set('#countPreview', money(qty*0.05));
 });
-on('#poundsW','input',()=>{
-  const lbs=+($('#poundsW')?.value||0);
-  const rate=(selectedMat && prices[selectedMat])||0;
-  set('#weightPreviewW', money(lbs*rate));
-  validateStep();
-});
-on('#qtyW','input',   ()=>{
-  const qty=+($('#qtyW')?.value||0);
-  set('#countPreviewW', money(qty*0.05));
-  validateStep();
-});
 
 /* Add items */
 function addWeightItem(kind){
   if(!selectedMat){ alert('Pick a material below.'); return;}
-  const lbs = isLandscapePhone() ? +($('#poundsW')?.value||0) : +($('#pounds')?.value||0);
+  const lbs = +($('#pounds')?.value||0);
   if(!lbs) return;
 
   let rate=(prices[selectedMat]||0);
@@ -506,101 +373,52 @@ function addWeightItem(kind){
     detail:`${tag} · ${lbs.toFixed(2)} lb × ${money(rate)}/lb${subtotal===0?' — no payout':''}`
   });
 
-  if(isLandscapePhone()){ $('#poundsW').value='0'; } else { $('#pounds').value='0'; }
+  $('#pounds').value='0';
   render();
 }
 function addCountItem(per){
   if(!selectedMat){ alert('Pick a material below.'); return;}
-  const qty = isLandscapePhone() ? +($('#qtyW')?.value||0) : +($('#qty')?.value||0);
+  const qty = +($('#qty')?.value||0);
   if(!qty) return;
   order.push({
     type:'crv',mat:selectedMat,qty,unitPrice:per,
     subtotal:qty*per,
     detail:`${qty} × ${(per===0.25?'25¢':per===0.10?'10¢':'5¢')}`
   });
-  if(isLandscapePhone()){ $('#qtyW').value='0'; } else { $('#qty').value='0'; }
+  $('#qty').value='0';
   render();
 }
 
 /* Render order */
 function render(){
-  const fill = (tbSel, crvSel, wtSel, grandSel, printBtnSel)=>{
-    const tb=$(tbSel); if(!tb) return;
-    tb.innerHTML=''; let crv=0,wt=0;
-    order.forEach((it,i)=>{
-      const nm=(materials[it.mat]||{label:it.mat}).label;
-      const tr=document.createElement('tr');
-      tr.innerHTML=`<td>${nm}</td><td>${it.detail}</td><td class="pricecell">${money(it.subtotal)}</td><td><button class='btn' data-i='${i}'>✕</button></td>`;
-      tb.appendChild(tr);
-      if(it.type==='weight') wt+=it.subtotal; else crv+=it.subtotal;
-    });
-    set(crvSel, money(crv));
-    set(wtSel, money(wt));
-    set(grandSel, money(crv+wt));
-    tb.querySelectorAll('button[data-i]').forEach(b=>b.addEventListener('click',()=>{order.splice(+b.dataset.i,1); render();}));
-    const printBtn=$(printBtnSel); if(printBtn) printBtn.disabled = order.length===0;
-  };
-  fill('#orderTable tbody','#crvTotal','#weightTotal','#grandTotal','#printLast');
-  fill('#orderTableW tbody','#crvTotalW','#weightTotalW','#grandTotalW','#printLastW');
+  const tb=$('#orderTable tbody');
+  tb.innerHTML='';
+  let crv=0,wt=0;
+  order.forEach((it,i)=>{
+    const nm=(materials[it.mat]||{label:it.mat}).label;
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${nm}</td><td>${it.detail}</td><td class="pricecell">${money(it.subtotal)}</td><td><button class='btn' data-i='${i}'>✕</button></td>`;
+    tb.appendChild(tr);
+    if(it.type==='weight') wt+=it.subtotal; else crv+=it.subtotal;
+  });
+  set('#crvTotal', money(crv));
+  set('#weightTotal', money(wt));
+  set('#grandTotal', money(crv+wt));
+  tb.querySelectorAll('button[data-i]').forEach(b=>b.addEventListener('click',()=>{order.splice(+b.dataset.i,1); render();}));
+  $('#printLast').disabled = order.length===0;
 }
 on('#clearOrder','click',()=>{ order.splice(0,order.length); render(); });
-on('#clearOrderW','click',()=>{ order.splice(0,order.length); render(); });
 
-/* ----- Landscape Wizard Logic ----- */
-let step=0;
-function syncLayoutsVisibility(){
-  const isW = isLandscapePhone();
-  show('#regularLayout', !isW);
-  show('#wizardLayout', isW);
-  show('#wizardNav', isW);
-  if(isW) wizardGo(step,false);
-}
-function validateStep(){
-  if(!isLandscapePhone()) return;
-  const valid = isCountW() ? (+($('#qtyW')?.value||0) > 0) : (+($('#poundsW')?.value||0) > 0);
-  const nextBtn = $('#stepNext');
-  if(step===0){ nextBtn.disabled = !valid; }
-  if(step===1){ nextBtn.disabled = (order.length===0); }
-  if(step===2){ nextBtn.textContent='New Item'; nextBtn.disabled=false; }
-}
-function updateDots(){
-  ['#d0','#d1','#d2'].forEach((id,i)=>{
-    const el=$(id); if(el){ el.classList.toggle('active', i===step); }
-  });
-}
-function scrollToPanel(i){
-  const ids=['#panelEnter','#panelMaterials','#panelOrder'];
-  const el=$(ids[i]); if(el) el.scrollIntoView({behavior:'smooth',block:'start'});
-}
-function wizardGo(i){
-  step = Math.max(0, Math.min(2, i));
-  updateDots(); validateStep();
-  const nextBtn = $('#stepNext');
-  if(step===0){ nextBtn.textContent='Next'; }
-  if(step===1){ nextBtn.textContent='Next'; nextBtn.disabled=(order.length===0); }
-  if(step===2){ nextBtn.textContent='New Item'; nextBtn.disabled=false; }
-  scrollToPanel(step);
-}
-on('#stepPrev','click', ()=>{ wizardGo(step-1); });
-on('#stepNext','click', ()=>{
-  if(step===2){ wizardGo(0); return; }
-  wizardGo(step+1);
-});
-window.addEventListener('resize', syncLayoutsVisibility);
-window.addEventListener('orientationchange', ()=> setTimeout(syncLayoutsVisibility, 200));
-syncLayoutsVisibility();
-
-/* Save order */
+/* Save order + orders list */
 let __lastSavedOrder = null;
 function currentTotals(){
   return {
-    crv:   ($('#crvTotal').textContent   || $('#crvTotalW')?.textContent   || '$0.00'),
-    weight:($('#weightTotal').textContent|| $('#weightTotalW')?.textContent|| '$0.00'),
-    grand: ($('#grandTotal').textContent || $('#grandTotalW')?.textContent || '$0.00'),
+    crv:   $('#crvTotal').textContent || '$0.00',
+    weight:$('#weightTotal').textContent || '$0.00',
+    grand: $('#grandTotal').textContent || '$0.00',
   };
 }
 on('#printLast', ()=>{ if(__lastSavedOrder) printReceipt(__lastSavedOrder); else alert('Save an order first.'); });
-on('#printLastW',()=>{ if(__lastSavedOrder) printReceipt(__lastSavedOrder); else alert('Save an order first.'); });
 
 function loadOrders(){
   try{ return JSON.parse(localStorage.getItem(ORDERS_KEY)||'[]'); }
@@ -610,9 +428,9 @@ function saveOrders(arr){
   localStorage.setItem(ORDERS_KEY, JSON.stringify(arr.slice(0,100)));
 }
 
-async function saveOrderCommon(hintSel, printSel){
-  set(hintSel,'');
-  if(!order.length){ set(hintSel,'Add some items first.'); return; }
+function saveOrderCommon(){
+  set('#saveHint','');
+  if(!order.length){ set('#saveHint','Add some items first.'); return; }
 
   const all = loadOrders();
   const payload={
@@ -625,14 +443,13 @@ async function saveOrderCommon(hintSel, printSel){
   saveOrders(all);
 
   __lastSavedOrder = payload;
-  const pb=document.querySelector(printSel); if(pb) pb.disabled=false;
+  $('#printLast').disabled=false;
   order.splice(0,order.length); render();
-  set(hintSel,'Saved ✔ (local only)');
+  set('#saveHint','Saved ✔ (local only)');
   if('vibrate' in navigator) navigator.vibrate?.(10);
-  setTimeout(()=>set(hintSel,''),1400);
+  setTimeout(()=>set('#saveHint',''),1400);
 }
-on('#saveOrder',  ()=> saveOrderCommon('#saveHint','#printLast'));
-on('#saveOrderW', ()=> saveOrderCommon('#saveHintW','#printLastW'));
+on('#saveOrder', saveOrderCommon);
 
 /* Prices modal */
 on('#openPrices','click', ()=>{ buildPricesForm(); $('#pricesModal').showModal(); });
