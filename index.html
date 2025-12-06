@@ -74,9 +74,8 @@
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js"></script>
 
-<!-- Firebase compat (easier in browser) -->
+<!-- Firebase compat (Firestore only) -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
@@ -171,7 +170,7 @@
     <div class="card" style="border:0">
       <div class="row" style="justify-content:space-between;align-items:center">
         <h3 style="margin:0">Edit Prices ($/lb)</h3>
-        <button class="btn" onclick="pricesModal.close()">✕</button>
+        <button class="btn" onclick="document.getElementById('pricesModal').close()">✕</button>
       </div>
       <div id="priceGrid" class="row" style="flex-direction:column"></div>
       <div class="row" style="justify-content:space-between;margin-top:10px;align-items:center">
@@ -189,7 +188,7 @@
       <div class="row" style="justify-content:space-between;align-items:center">
         <h3 style="margin:0">Saved Orders</h3>
         <div class="row" style="gap:8px;align-items:center">
-          <button class="btn" onclick="ordersModal.close()">✕</button>
+          <button class="btn" onclick="document.getElementById('ordersModal').close()">✕</button>
         </div>
       </div>
       <div id="ordersList"></div>
@@ -203,7 +202,7 @@
         <h3 style="margin:0">Order Code</h3>
         <div class="row">
           <button id="printBar" class="btn">Print</button>
-          <button class="btn" onclick="barcodeModal.close()">✕</button>
+          <button class="btn" onclick="document.getElementById('barcodeModal').close()">✕</button>
         </div>
       </div>
       <div class="center" style="width:100%;text-align:center">
@@ -218,7 +217,7 @@
     <div class="card" style="border:0">
       <div class="row" style="justify-content:space-between;align-items:center">
         <h3 style="margin:0">Scan Code</h3>
-        <button class="btn" onclick="stopScan();scanModal.close()">✕</button>
+        <button class="btn" onclick="stopScan();document.getElementById('scanModal').close()">✕</button>
       </div>
       <video id="video" playsinline style="width:100%;border-radius:12px;background:#000"></video>
       <div class="row" style="justify-content:space-between;margin-top:6px">
@@ -563,7 +562,7 @@ on('#savePrices','click', async ()=>{
   }catch(e){
     set('#priceSyncState','Prices stored locally (cloud failed)');
   }
-  $('#pricesModal').close();
+  document.getElementById('pricesModal').close();
 });
 
 /* Orders modal (cloud if online, else local) */
@@ -584,7 +583,7 @@ on('#viewOrders','click', async ()=>{
 
   if(!all || !all.length){
     list.innerHTML='<div class="hint">No orders yet.</div>';
-    ordersModal.showModal(); return;
+    document.getElementById('ordersModal').showModal(); return;
   }
   all.forEach(o=>{
     const div=document.createElement('div'); div.className='card';
@@ -607,7 +606,7 @@ on('#viewOrders','click', async ()=>{
     totals.innerHTML=`<span>CRV: <b>${o.totals?.crv||'$0.00'}</b></span><span>Weight: <b>${o.totals?.weight||'$0.00'}</b></span><span>Grand: <b>${o.totals?.grand||'$0.00'}</b></span>`;
     div.append(header,ul,totals); list.appendChild(div);
   });
-  ordersModal.showModal();
+  document.getElementById('ordersModal').showModal();
 });
 
 /* ----- QR code for order IDs ----- */
@@ -626,7 +625,7 @@ function showBarcode(text){
       if(err) console.warn('QR error', err);
     });
   }catch(e){ console.warn('QR lib error', e); }
-  $('#barcodeModal').showModal();
+  document.getElementById('barcodeModal').showModal();
 }
 on('#printBar','click', ()=>{
   const canvas=$('#qrCanvas');
@@ -650,7 +649,7 @@ if(scanModalEl){
 on('#scanBtn','click', ()=>{
   $('#scanOrder').style.display='none';
   set('#scanResult','Point camera at QR or barcode.');
-  $('#scanModal').showModal();
+  document.getElementById('scanModal').showModal();
 });
 async function startScan(){
   try{
@@ -775,7 +774,7 @@ function printReceipt(order){
   w.document.close();
 }
 
-/* ----- Firebase: anonymous auth + Firestore ----- */
+/* ----- Firebase: Firestore only (no Auth) ----- */
 window.cloud = null;
 window.firebaseReady = false;
 
@@ -790,51 +789,72 @@ const fbCfg = {
 };
 
 (function initFirebase(){
-  if(typeof firebase === 'undefined'){ setCloud('Cloud: unavailable'); return; }
-  try{
+  if (typeof firebase === 'undefined') {
+    setCloud('Cloud: unavailable');
+    return;
+  }
+  try {
     const app = firebase.initializeApp(fbCfg);
-    const auth = firebase.auth();
-    const db   = firebase.firestore();
+    const db  = firebase.firestore();
 
+    // Optional offline cache
     db.enablePersistence({synchronizeTabs:true}).catch(()=>{});
 
-    auth.onAuthStateChanged((user)=>{
-      if(user){
+    // Cloud helper – no auth, rules must allow unauth'ed access
+    window.cloud = {
+      async saveOrder(o){ return db.collection('orders').doc(o.id).set(o); },
+      async getOrder(id){
+        const s = await db.collection('orders').doc(id).get();
+        return s.exists ? s.data() : null;
+      },
+      async listOrders(){
+        const s = await db.collection('orders')
+          .orderBy('when','desc')
+          .limit(100)
+          .get();
+        return s.docs.map(d => d.data());
+      },
+      async getPrices(){
+        const s = await db.collection('settings').doc('prices').get();
+        return s.exists ? s.data() : null;
+      },
+      async setPrices(map){
+        return db.collection('settings').doc('prices').set({
+          map,
+          updatedAt: new Date().toISOString()
+        });
+      }
+    };
+
+    // Ping Firestore once so we know if it works
+    db.collection('meta').doc('ping')
+      .set({ ts: firebase.firestore.FieldValue.serverTimestamp() }, { merge:true })
+      .then(async () => {
         window.firebaseReady = true;
         setCloud('Cloud: online');
-        window.cloud = {
-          async saveOrder(o){ return db.collection('orders').doc(o.id).set(o); },
-          async getOrder(id){ const s=await db.collection('orders').doc(id).get(); return s.exists? s.data(): null; },
-          async listOrders(){ const s=await db.collection('orders').orderBy('when','desc').limit(100).get(); return s.docs.map(d=>d.data()); },
-          async getPrices(){ const s=await db.collection('settings').doc('prices').get(); return s.exists? s.data(): null; },
-          async setPrices(map){ return db.collection('settings').doc('prices').set({ map, updatedAt: new Date().toISOString() }); }
-        };
 
-        // try pulling latest cloud prices once
-        (async ()=>{
-          try{
-            const doc = await window.cloud.getPrices();
-            if(doc && doc.map){
-              prices = {...prices, ...doc.map};
-              localStorage.setItem(PRICES_KEY, JSON.stringify(prices));
-            }
-          }catch(e){}
-        })();
-      }else{
-        setCloud('Cloud: signing in…');
-      }
-    });
-
-    // anonymous sign-in so you don't need a password
-    auth.signInAnonymously().catch((e)=>{
-      console.warn('anon auth failed',e);
-      setCloud('Cloud: auth failed');
-    });
+        // Try to pull prices from cloud once
+        try {
+          const doc = await window.cloud.getPrices();
+          if (doc && doc.map) {
+            prices = { ...prices, ...doc.map };
+            localStorage.setItem(PRICES_KEY, JSON.stringify(prices));
+          }
+        } catch (e) {
+          console.warn('price sync failed', e);
+        }
+      })
+      .catch(err => {
+        console.warn('Firestore ping failed', err);
+        setCloud('Cloud: offline');
+        window.cloud = null; // fall back to local-only
+      });
 
     setCloud('Cloud: connecting…');
-  }catch(e){
+  } catch (e) {
     console.error('Firebase init error', e);
     setCloud('Cloud: error');
+    window.cloud = null;
   }
 })();
 </script>
