@@ -49,14 +49,14 @@
     max-width:1040px; margin:0 auto; padding:14px;
     display:none;
   }
+
   header{
     display:flex; gap:10px; align-items:center; justify-content:space-between;
-    position:sticky; top:0;
-    z-index:10;
     padding:8px 0 10px;
-    background:linear-gradient(180deg, color-mix(in oklab,var(--bg2) 88%, #000 6%), transparent);
-    backdrop-filter: blur(8px);
+    position:relative;
+    background:transparent;
   }
+
   .badge{font-size:.72rem; color:var(--bg2); background:var(--accent); padding:4px 8px; border-radius:999px; font-weight:700}
   .card{background:var(--card); border:1px solid var(--border); border-radius:16px; padding:12px}
   table{width:100%; border-collapse:collapse}
@@ -109,9 +109,6 @@
   @media (max-width:720px){
     header{flex-direction:column; align-items:flex-start}
   }
-  @media (max-width:480px){
-    .mat-btn{min-height:128px}
-  }
 
   /* Full-screen auth overlay */
   #authScreen{
@@ -150,14 +147,14 @@
         <h2 style="margin:0;font-size:1.5rem">Recycling POS</h2>
       </div>
     </div>
-    <p class="hint" style="margin:0 0 10px">Staff login. Only authorized staff may sign in.</p>
+    <p class="hint" style="margin:0 0 10px">Staff login. Use the email & password from Firebase Auth.</p>
     <div class="row" style="flex-direction:column;gap:8px">
       <label>Email</label>
       <input id="loginEmail" placeholder="example@gmail.com" autocomplete="username" />
       <label>Password</label>
       <input id="loginPass" type="password" placeholder="••••••" autocomplete="current-password" />
       <div class="row" style="justify-content:space-between;align-items:center;margin-top:4px">
-        <span id="loginHint" class="hint">Use your staff account.</span>
+        <span id="loginHint" class="hint">Only staff accounts can sign in.</span>
         <button id="loginBtn" class="btn success">Sign in</button>
       </div>
     </div>
@@ -173,6 +170,7 @@
       <button id="scanBtn" class="btn">Scan</button>
       <button id="openPrices" class="btn">Prices</button>
       <button id="viewOrders" class="btn">Orders</button>
+      <button id="manageStaff" class="btn" style="display:none">Staff</button>
       <button id="themeBtn" class="btn" title="Toggle theme">☀︎/🌙</button>
       <button id="logoutBtn" class="btn">Logout</button>
     </div>
@@ -285,6 +283,20 @@
   </div>
 </dialog>
 
+<!-- Staff / Roles Modal -->
+<dialog id="staffModal" style="border:0;padding:0;border-radius:16px;background:var(--card);color:var(--ink);width:min(720px,96vw)">
+  <div class="card" style="border:0">
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <h3 style="margin:0">Staff &amp; Roles</h3>
+      <button class="btn" onclick="staffModal.close()">✕</button>
+    </div>
+    <p class="hint" style="margin:4px 0 8px">
+      Only admins can change roles. Superadmin = zoptris@gmail.com.
+    </p>
+    <div id="staffList"></div>
+  </div>
+</dialog>
+
 <!-- Scanner Modal -->
 <dialog id="scanModal" style="border:0;padding:0;border-radius:16px;background:var(--card);color:var(--ink);width:min(720px,96vw)">
   <div class="card" style="border:0">
@@ -309,7 +321,6 @@ const on = (sel, evt, fn)=>{ const el=$(sel); if(el) el.addEventListener(evt, fn
 const money = (n)=> (isNaN(n)?0:n).toLocaleString(undefined,{style:'currency',currency:'USD'});
 function setCloud(text){ $('#cloudStatus').textContent = text; }
 
-/* Simple click lock (avoid accidental double taps) */
 function lockClick(btn, fn, ms=300){
   if(!btn) return;
   if(btn.__locked) return;
@@ -381,11 +392,7 @@ function isCountMode(){ return $('#cntMode').checked; }
 function updateModeUI(){
   $('#countBox').style.display = isCountMode() ? 'block' : 'none';
   $('#weightBox').style.display = isCountMode() ? 'none' : 'block';
-  if(isCountMode()){
-    $('#qty').focus();
-  }else{
-    $('#pounds').focus();
-  }
+  if(isCountMode()){ $('#qty').focus(); } else { $('#pounds').focus(); }
 }
 on('#cntMode','change', ()=>updateModeUI());
 updateModeUI();
@@ -420,6 +427,10 @@ const order=[];
 let __lastSavedOrder=null;
 let lastGrandTotal = 0;
 let isSaving=false;
+
+/* Role state */
+let currentRole = null;           // 'superadmin' | 'admin' | 'cashier' | null
+let isSuperAdmin = false;
 
 /* Material selection highlight helper */
 function highlightSelectedMat(key){
@@ -548,7 +559,8 @@ function addCountItem(per){
 function updateSaveEnabled(){
   const btn = $('#saveOrder');
   if(!btn) return;
-  btn.disabled = isSaving || order.length===0;
+  const canSaveByRole = currentRole === 'superadmin' || currentRole === 'admin' || currentRole === 'cashier';
+  btn.disabled = isSaving || order.length===0 || !canSaveByRole;
 }
 
 /* Render order */
@@ -573,7 +585,7 @@ function renderOrder(){
 
   if(newGrand !== lastGrandTotal){
     grandCell.classList.remove('pulse');
-    void grandCell.offsetWidth; // force reflow
+    void grandCell.offsetWidth;
     grandCell.classList.add('pulse');
     lastGrandTotal = newGrand;
   }
@@ -621,22 +633,76 @@ const auth = firebase.auth();
 const db   = firebase.firestore();
 db.enablePersistence({synchronizeTabs:true}).catch(()=>{});
 
+/* ---- Roles helpers ---- */
+async function ensureUserRoleDoc(user){
+  isSuperAdmin = user.email === 'zoptris@gmail.com';
+  const uid = user.uid;
+  const ref = db.collection('users').doc(uid);
+  const snap = await ref.get();
+
+  if(!snap.exists){
+    const defaultRole = isSuperAdmin ? 'superadmin' : 'cashier';
+    await ref.set({
+      email: user.email || null,
+      role: defaultRole,
+      createdAt: new Date().toISOString()
+    });
+    currentRole = defaultRole;
+  }else{
+    const data = snap.data() || {};
+    currentRole = data.role || (isSuperAdmin ? 'superadmin' : 'cashier');
+  }
+}
+
+function roleLabel(role){
+  if(!role) return 'Unknown';
+  if(role === 'superadmin') return 'Superadmin';
+  if(role === 'admin') return 'Admin';
+  if(role === 'cashier') return 'Cashier';
+  return role;
+}
+
+function applyRoleUI(){
+  const user = auth.currentUser;
+  const staff = $('#staffStatus');
+  const email = user?.email || 'unknown';
+  staff.textContent = `Staff: ${email} (${roleLabel(currentRole)})`;
+
+  const isAdminLike = currentRole === 'superadmin' || currentRole === 'admin';
+
+  // Only admin/superadmin can edit prices & roles
+  $('#openPrices').style.display = isAdminLike ? '' : 'none';
+  $('#manageStaff').style.display = isAdminLike ? '' : 'none';
+
+  // Everyone with a role can view orders
+  $('#viewOrders').style.display = (currentRole ? '' : 'none');
+
+  updateSaveEnabled();
+}
+
 /* Auth state */
-auth.onAuthStateChanged(user=>{
+auth.onAuthStateChanged(async user=>{
   const app=$('.wrap');
   const authScreen=$('#authScreen');
   if(user){
-    setCloud('Cloud: online (admin)');
-    $('#staffStatus').textContent='Staff: '+(user.email||user.uid);
+    setCloud('Cloud: online');
     $('#loginHint').textContent='';
+    try{
+      await ensureUserRoleDoc(user);
+    }catch(e){
+      console.error('role load error', e);
+      currentRole = null;
+    }
+    applyRoleUI();
     if(authScreen) authScreen.style.display='none';
     if(app) app.style.display='block';
     setTimeout(()=>$('#pounds').focus(), 200);
   }else{
     setCloud('Cloud: offline');
-    $('#staffStatus').textContent='Staff: guest';
+    currentRole = null;
     if(app) app.style.display='none';
     if(authScreen) authScreen.style.display='flex';
+    $('#staffStatus').textContent='Staff: guest';
   }
 });
 
@@ -685,11 +751,13 @@ async function saveOrderToCloud(){
   hint.textContent='';
   hint.classList.remove('error');
   if(!order.length){ hint.textContent='Add some items first.'; return; }
-  if(!auth.currentUser){ hint.textContent='Sign in as admin first.'; return; }
+  if(!auth.currentUser){ hint.textContent='Sign in first.'; return; }
 
   const payload={
     id:'SR-'+Date.now(),
     when:new Date().toISOString(),
+    staff: auth.currentUser.email || auth.currentUser.uid,
+    role: currentRole || null,
     items:[...order],
     totals:currentTotals()
   };
@@ -849,7 +917,7 @@ on('#viewOrders','click', async ()=>{
       left.textContent=o.id;
       const info=document.createElement('span');
       info.className='hint';
-      info.textContent=new Date(o.when).toLocaleString();
+      info.textContent=new Date(o.when).toLocaleString() + (o.staff ? ` · ${o.staff}` : '');
       leftWrap.append(left,info);
 
       const btnRow=document.createElement('div');
@@ -883,6 +951,92 @@ on('#viewOrders','click', async ()=>{
     list.innerHTML='<div class="hint error">Error loading orders (check rules / auth).</div>';
     ordersModal.showModal();
   }
+});
+
+/* ---------- Staff / Roles UI ---------- */
+on('#manageStaff','click', async ()=>{
+  const list=$('#staffList');
+  list.innerHTML='<div class="hint">Loading staff…</div>';
+  try{
+    const snap=await db.collection('users').orderBy('email').get();
+    if(snap.empty){
+      list.innerHTML='<div class="hint">No staff docs yet. They appear after a user logs in once.</div>';
+    }else{
+      list.innerHTML='';
+      snap.forEach(doc=>{
+        const u=doc.data();
+        const uid=doc.id;
+        const row=document.createElement('div');
+        row.className='card';
+        row.style.marginBottom='8px';
+
+        const top=document.createElement('div');
+        top.className='row';
+        top.style.justifyContent='space-between';
+        top.style.alignItems='center';
+
+        const left=document.createElement('div');
+        left.style.display='flex';
+        left.style.flexDirection='column';
+        left.innerHTML=`<b>${u.email||uid}</b><span class="hint">${uid}</span>`;
+
+        const right=document.createElement('div');
+        right.className='row';
+        right.style.alignItems='center';
+        right.style.gap='8px';
+        const sel=document.createElement('select');
+        ['superadmin','admin','cashier'].forEach(role=>{
+          const opt=document.createElement('option');
+          opt.value=role;
+          opt.textContent=roleLabel(role);
+          if((u.role||'')===role) opt.selected=true;
+          sel.appendChild(opt);
+        });
+        sel.style.padding='6px 8px';
+        sel.style.borderRadius='8px';
+        sel.style.border='1px solid var(--border)';
+        sel.style.background='color-mix(in oklab,var(--card) 92%, #0e1b30 14%)';
+        sel.style.color='var(--ink)';
+
+        const saveBtn=document.createElement('button');
+        saveBtn.className='btn';
+        saveBtn.textContent='Update';
+
+        saveBtn.addEventListener('click', ()=>{
+          lockClick(saveBtn, async ()=>{
+            const newRole = sel.value;
+            saveBtn.textContent='Saving…';
+            try{
+              await db.collection('users').doc(uid).update({
+                role:newRole,
+                updatedAt:new Date().toISOString(),
+                updatedBy: auth.currentUser?.email || auth.currentUser?.uid || null
+              });
+              saveBtn.textContent='Saved';
+              setTimeout(()=>{ saveBtn.textContent='Update'; },1000);
+              if(uid === auth.currentUser.uid){
+                currentRole=newRole;
+                applyRoleUI();
+              }
+            }catch(e){
+              console.error(e);
+              saveBtn.textContent='Error';
+              setTimeout(()=>{ saveBtn.textContent='Update'; },1200);
+            }
+          });
+        });
+
+        right.append(sel,saveBtn);
+        top.append(left,right);
+        row.append(top);
+        list.appendChild(row);
+      });
+    }
+  }catch(e){
+    console.error(e);
+    list.innerHTML='<div class="hint error">Failed to load staff (check rules).</div>';
+  }
+  staffModal.showModal();
 });
 
 /* ---------- Scanner (barcode) ---------- */
@@ -953,7 +1107,7 @@ async function onScan(val){
   }
 }
 
-/* Autofocus on first load (before login state known, it'll kick in after auth too) */
+/* Autofocus on first load */
 window.addEventListener('load', ()=>{
   const w = $('#pounds');
   if(w){ setTimeout(()=>w.focus(), 300); }
