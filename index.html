@@ -36,7 +36,7 @@
   .btn[disabled]{opacity:.6; cursor:not-allowed}
   input{font:inherit; border-radius:12px; border:1px solid var(--border); background:color-mix(in oklab, var(--card) 92%, #0e1b30 14%); color:var(--ink); padding:12px}
   input[type=number]{text-align:center}
-  .wrap{max-width:1040px; margin:0 auto; padding:14px}
+  .wrap{max-width:1040px; margin:0 auto; padding:14px; display:none}
   header{display:flex; gap:10px; align-items:center; justify-content:space-between}
   .badge{font-size:.72rem; color:var(--bg2); background:var(--accent); padding:4px 8px; border-radius:999px; font-weight:700}
   .card{background:var(--card); border:1px solid var(--border); border-radius:16px; padding:12px}
@@ -53,6 +53,24 @@
   @media (max-width:720px){
     header{flex-direction:column; align-items:flex-start}
   }
+
+  /* Full-screen auth overlay */
+  #authScreen{
+    position:fixed; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    padding:24px;
+    background:radial-gradient(60vw 60vh at 20% 10%, #112346aa 0%, var(--bg) 60%);
+    z-index:30;
+  }
+  .auth-card{
+    width:min(480px, 94vw);
+    background:color-mix(in oklab, var(--card) 70%, #111a2b22);
+    backdrop-filter: blur(10px);
+    border:1px solid var(--border);
+    border-radius:18px;
+    padding:18px;
+    box-shadow:0 20px 80px rgba(0,0,0,.25);
+  }
 </style>
 
 <!-- Libraries -->
@@ -64,19 +82,27 @@
 </head>
 <body>
 
-<!-- SIMPLE LOGIN STRIP (top) -->
-<div id="loginBar" class="card" style="margin:10px; max-width:420px; position:fixed; top:10px; right:10px; z-index:20">
-  <div class="row" style="justify-content:space-between; align-items:center">
-    <b>Admin Login</b>
-    <span id="loginStatus" class="hint">Signed out</span>
+<!-- FULL-SCREEN LOGIN -->
+<div id="authScreen">
+  <div class="auth-card">
+    <div class="row" style="align-items:center;justify-content:space-between;margin-bottom:6px">
+      <div class="row" style="align-items:center;gap:8px">
+        <span style="width:12px;height:12px;border-radius:999px;background:var(--accent);box-shadow:0 0 16px color-mix(in oklab,var(--accent) 60%,white);"></span>
+        <h2 style="margin:0;font-size:1.5rem">Login</h2>
+      </div>
+    </div>
+    <p class="hint" style="margin-bottom:10px">Sign in to access orders &amp; scanning.</p>
+    <div class="row" style="flex-direction:column;gap:8px">
+      <label>Email</label>
+      <input id="loginEmail" placeholder="example@gmail.com" autocomplete="username" />
+      <label>Password</label>
+      <input id="loginPass" type="password" placeholder="••••••" autocomplete="current-password" />
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <span id="loginHint" class="hint">Use your staff account.</span>
+        <button id="loginBtn" class="btn success">Sign in</button>
+      </div>
+    </div>
   </div>
-  <div class="row" style="margin-top:6px">
-    <input id="loginEmail" placeholder="example@gmail.com" style="flex:1; min-width:0" autocomplete="username" />
-    <input id="loginPass" type="password" placeholder="••••••" style="flex:1; min-width:0" autocomplete="current-password" />
-    <button id="loginBtn" class="btn success">Sign in</button>
-    <button id="logoutBtn" class="btn">Logout</button>
-  </div>
-  <div id="loginHint" class="hint" style="margin-top:4px"></div>
 </div>
 
 <div class="wrap">
@@ -89,6 +115,7 @@
       <button id="openPrices" class="btn">Prices</button>
       <button id="viewOrders" class="btn">Orders</button>
       <button id="themeBtn" class="btn" title="Toggle theme">☀︎/🌙</button>
+      <button id="logoutBtn" class="btn">Logout</button>
     </div>
   </header>
 
@@ -148,8 +175,7 @@
     <div id="matGrid" class="grid"></div>
     <div id="choicePanel" class="row" style="gap:10px;display:none;flex-wrap:wrap"></div>
     <div class="hint" id="pickedHint" style="margin-top:8px">
-      Weight by default. Enter lbs first, then tap a material; panel shows CRV / Non-CRV (or $1.75 for aluminum).  
-      If <b>CNT</b> is checked, enter quantity then tap material to choose 5¢ / 10¢ or 25¢ each. Non-CRV has no payout.
+      Tip: enter weight or count, then tap a material. CNT = count mode. Aluminum right button = $1.75/lb. Non-CRV items pay $0.
     </div>
   </div>
 </div>
@@ -475,19 +501,23 @@ db.enablePersistence({synchronizeTabs:true}).catch(()=>{});
 
 /* Auth state */
 auth.onAuthStateChanged(user=>{
+  const app=$('.wrap');
+  const authScreen=$('#authScreen');
   if(user){
     setCloud('Cloud: online (admin)');
     $('#staffStatus').textContent='Staff: '+(user.email||user.uid);
-    $('#loginStatus').textContent='Signed in';
     $('#loginHint').textContent='';
+    if(authScreen) authScreen.style.display='none';
+    if(app) app.style.display='block';
   }else{
     setCloud('Cloud: offline');
     $('#staffStatus').textContent='Staff: guest';
-    $('#loginStatus').textContent='Signed out';
+    if(app) app.style.display='none';
+    if(authScreen) authScreen.style.display='flex';
   }
 });
 
-/* Login bar */
+/* Login + logout */
 on('#loginBtn','click', async ()=>{
   const email=$('#loginEmail').value.trim();
   const pass=$('#loginPass').value.trim();
@@ -547,7 +577,7 @@ async function saveOrderToCloud(){
 }
 on('#saveOrder','click', saveOrderToCloud);
 
-/* ---------- Prices (optional cloud sync) ---------- */
+/* ---------- Prices (cloud sync) ---------- */
 function buildPricesForm(){
   const grid=$('#priceGrid');
   grid.innerHTML='';
