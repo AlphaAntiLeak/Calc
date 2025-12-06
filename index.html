@@ -57,7 +57,6 @@
     .grid{grid-template-columns:repeat(3,1fr)}
   }
 
-  /* iPhone 15 Pro Max (portrait tweaks) */
   @supports (-webkit-touch-callout: none) {
     @media screen and (device-width:430px) and (device-height:932px) and (-webkit-device-pixel-ratio:3) {
       .wrap{padding:12px}
@@ -93,7 +92,6 @@
       </div>
     </header>
 
-    <!-- MAIN LAYOUT (same on mobile + web) -->
     <div id="mainLayout">
       <div class="row" style="margin-top:12px">
         <!-- ENTRY -->
@@ -160,9 +158,8 @@
       </div>
     </div>
 
-  </div> <!-- /wrap -->
+  </div>
 
-  <!-- Floating pencil (scroll back to materials when grid is hidden) -->
   <button id="editFab" class="fab" aria-label="Back to materials" title="Back to materials"><span>✎</span></button>
 
   <!-- Prices Modal -->
@@ -187,9 +184,7 @@
     <div class="card" style="border:0">
       <div class="row" style="justify-content:space-between;align-items:center">
         <h3 style="margin:0">Saved Orders</h3>
-        <div class="row" style="gap:8px;align-items:center">
-          <button class="btn" onclick="document.getElementById('ordersModal').close()">✕</button>
-        </div>
+        <button class="btn" onclick="document.getElementById('ordersModal').close()">✕</button>
       </div>
       <div id="ordersList"></div>
     </div>
@@ -205,8 +200,8 @@
           <button class="btn" onclick="document.getElementById('barcodeModal').close()">✕</button>
         </div>
       </div>
-      <div class="center" style="width:100%;text-align:center">
-        <canvas id="qrCanvas" style="width:100%;max-width:320px;height:auto"></canvas>
+      <div style="width:100%;text-align:center">
+        <canvas id="qrCanvas" style="width:100%;max-width:320px;height:auto;background:#ffffff;border-radius:12px"></canvas>
       </div>
       <div class="hint" id="barcodeHint" style="margin-top:8px;word-break:break-all;text-align:center"></div>
     </div>
@@ -231,14 +226,14 @@
 </div>
 
 <script>
-/* ------ Helpers ------ */
+/* Helpers */
 const $ = (q)=>document.querySelector(q);
 const on = (sel, evt, fn)=>{ const el=$(sel); if(el) el.addEventListener(evt, fn, {passive:true}); };
 const set = (sel, text)=>{ const el=$(sel); if(el) el.textContent = text; };
 const money = (n)=> (isNaN(n)?0:n).toLocaleString(undefined,{style:'currency',currency:'USD'});
 const setCloud = (text)=> set('#cloudStatus', text);
 
-/* Theme toggle */
+/* Theme */
 (function(){
   const saved = localStorage.getItem('sr_theme')||'';
   if(saved==='light') document.documentElement.setAttribute('data-theme','light');
@@ -253,7 +248,7 @@ const setCloud = (text)=> set('#cloudStatus', text);
 const ORDERS_KEY = 'sr_orders_v1';
 const PRICES_KEY = 'sr_prices';
 
-/* Icons & Materials */
+/* Icons & materials */
 const icons={
   can:`<svg viewBox='0 0 64 64' fill='none'><rect x='18' y='4' width='28' height='56' rx='6' stroke='#7dd3fc' stroke-width='3'/><rect x='22' y='10' width='20' height='44' rx='3' fill='#1a2744'/></svg>`,
   bottle:`<svg viewBox='0 0 64 64' fill='none'><path d='M28 6h8v8a8 8 0 0 1 4 7v30a8 8 0 0 1-8 8h0a8 8 0 0 1-8-8V21a8 8 0 0 1 4-7V6z' stroke='#7dd3fc' stroke-width='3' fill='#1a2744'/></svg>`,
@@ -453,7 +448,7 @@ function render(){
   $('#printLast').disabled = order.length===0;
 }
 
-/* Clear with confirmation (double-click within 2s) */
+/* Clear with confirmation */
 let clearConfirm=false;
 on('#clearOrder','click',()=>{
   if(!order.length) return;
@@ -480,7 +475,7 @@ on('#clearOrder','click',()=>{
   render();
 });
 
-/* Save order + orders list */
+/* Orders save / load */
 let __lastSavedOrder = null;
 function currentTotals(){
   return {
@@ -501,7 +496,10 @@ function saveOrders(arr){
 
 async function saveOrderCommon(){
   set('#saveHint','');
-  if(!order.length){ set('#saveHint','Add some items first.'); return; }
+  if(!order.length){
+    set('#saveHint','Add some items first.');
+    return;
+  }
 
   const payload={
     id:'SR-'+Date.now(),
@@ -515,21 +513,24 @@ async function saveOrderCommon(){
   all.unshift(payload);
   saveOrders(all);
 
-  // cloud (best effort)
+  // cloud best-effort
   try{
     if(window.cloud) await window.cloud.saveOrder(payload);
-  }catch(e){ console.warn('cloud save failed',e); }
+  }catch(e){
+    console.warn('cloud save failed',e);
+    set('#saveHint','Saved locally (cloud error).');
+  }
 
   __lastSavedOrder = payload;
   $('#printLast').disabled=false;
   order.splice(0,order.length); render();
-  set('#saveHint','Saved ✔');
+  if(!$('#saveHint').textContent) set('#saveHint','Saved ✔');
   if('vibrate' in navigator) navigator.vibrate?.(10);
-  setTimeout(()=>set('#saveHint',''),1400);
+  setTimeout(()=>set('#saveHint',''),1500);
 }
 on('#saveOrder', ()=>{ saveOrderCommon(); });
 
-/* Prices modal */
+/* Prices */
 on('#openPrices','click', ()=>{ buildPricesForm(); $('#pricesModal').showModal(); });
 function buildPricesForm(){
   const grid=$('#priceGrid'); grid.innerHTML='';
@@ -565,14 +566,14 @@ on('#savePrices','click', async ()=>{
   document.getElementById('pricesModal').close();
 });
 
-/* Orders modal (cloud if online, else local) */
+/* Orders modal */
 on('#viewOrders','click', async ()=>{
   const list=$('#ordersList'); list.innerHTML='';
   let all=[];
   try{
     if(window.cloud && window.firebaseReady){
       all = await window.cloud.listOrders();
-      if(all && all.length) saveOrders(all); // mirror to local
+      if(all && all.length) saveOrders(all);
     }else{
       all = loadOrders();
     }
@@ -588,16 +589,16 @@ on('#viewOrders','click', async ()=>{
   all.forEach(o=>{
     const div=document.createElement('div'); div.className='card';
     const header=document.createElement('div'); header.className='row'; header.style.justifyContent='space-between'; header.style.alignItems='center';
-    const left=document.createElement('b'); left.textContent=o.id;
+    const left=document.createElement('b'); left.textContent=o.id || '(no id)';
 
     const codeBtn=document.createElement('button'); codeBtn.className='btn primary'; codeBtn.textContent='Code';
-    codeBtn.addEventListener('click',()=>showBarcode(o.id));
+    codeBtn.addEventListener('click',()=>showBarcode(o.id || o._id || ''));
 
     const rbtn=document.createElement('button'); rbtn.className='btn'; rbtn.textContent='Receipt';
     rbtn.style.marginLeft='6px';
     rbtn.addEventListener('click',()=>printReceipt(o));
 
-    const right=document.createElement('span'); right.className='hint'; right.textContent=new Date(o.when).toLocaleString();
+    const right=document.createElement('span'); right.className='hint'; right.textContent=new Date(o.when||Date.now()).toLocaleString();
     header.append(left,codeBtn,rbtn,right);
 
     const ul=document.createElement('ul');
@@ -609,22 +610,36 @@ on('#viewOrders','click', async ()=>{
   document.getElementById('ordersModal').showModal();
 });
 
-/* ----- QR code for order IDs ----- */
+/* QR for orders */
 function codeColors(){
   const isLight = document.documentElement.getAttribute('data-theme')==='light';
   return isLight
     ? { dark:'#111111', light:'#ffffff' }
-    : { dark:'#ffffff', light:'#0f1730' };
+    : { dark:'#000000', light:'#ffffff' };
 }
 function showBarcode(text){
-  set('#barcodeHint', text);
+  const value = text && String(text).trim() ? String(text).trim() : 'NO-ID';
+  set('#barcodeHint', value);
+
+  const canvas = $('#qrCanvas');
+  const ctx = canvas.getContext('2d');
+  // white background
+  const w = canvas.width = 320;
+  const h = canvas.height = 320;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0,0,w,h);
+
   try{
-    const canvas = $('#qrCanvas');
     const cc = codeColors();
-    QRCode.toCanvas(canvas, text, { width: 320, margin: 1, color:{ dark: cc.dark, light: cc.light } }, function(err){
+    QRCode.toCanvas(canvas, value, {
+      width: 320,
+      margin: 1,
+      color:{ dark: cc.dark, light: cc.light }
+    }, function(err){
       if(err) console.warn('QR error', err);
     });
   }catch(e){ console.warn('QR lib error', e); }
+
   document.getElementById('barcodeModal').showModal();
 }
 on('#printBar','click', ()=>{
@@ -639,7 +654,7 @@ on('#printBar','click', ()=>{
   w.document.close();
 });
 
-/* ----- Scanner (ZXing) ----- */
+/* Scanner */
 let stream=null, codeReader=null;
 const scanModalEl = document.getElementById('scanModal');
 if(scanModalEl){
@@ -654,7 +669,7 @@ on('#scanBtn','click', ()=>{
 async function startScan(){
   try{
     if(!navigator.mediaDevices?.getUserMedia){
-      set('#camState','Camera: unsupported in this browser');
+      set('#camState','Camera: unsupported');
       return;
     }
     const constraints = { video: { facingMode: { ideal: 'environment' } } };
@@ -697,7 +712,7 @@ async function onScan(val){
     const rows=(o.items||[]).map(it=>`<li>${(materials[it.mat]||{label:it.mat}).label} — ${it.detail} <b>${money(it.subtotal)}</b></li>`).join('');
     panel.style.display='block';
     panel.innerHTML=`<h3 style='margin:10px 0'>${o.id}</h3>
-      <div class='hint'>${new Date(o.when).toLocaleString()}</div>
+      <div class='hint'>${new Date(o.when||Date.now()).toLocaleString()}</div>
       <ul>${rows}</ul>
       <div class='row' style='justify-content:flex-end;gap:16px'>
         <span>CRV: <b>${o.totals?.crv||'$0.00'}</b></span>
@@ -713,7 +728,7 @@ async function onScan(val){
   }
 }
 
-/* ----- Receipt Printing (GRAND TOTAL only) ----- */
+/* Receipt printing */
 function buildReceiptHTML(order){
   const items = (order.items||[]);
   const lines = items.map(it=>{
@@ -774,7 +789,7 @@ function printReceipt(order){
   w.document.close();
 }
 
-/* ----- Firebase: Firestore only (no Auth) ----- */
+/* Firebase: Firestore only */
 window.cloud = null;
 window.firebaseReady = false;
 
@@ -797,22 +812,23 @@ const fbCfg = {
     const app = firebase.initializeApp(fbCfg);
     const db  = firebase.firestore();
 
-    // Optional offline cache
     db.enablePersistence({synchronizeTabs:true}).catch(()=>{});
 
-    // Cloud helper – no auth, rules must allow unauth'ed access
     window.cloud = {
       async saveOrder(o){ return db.collection('orders').doc(o.id).set(o); },
       async getOrder(id){
         const s = await db.collection('orders').doc(id).get();
-        return s.exists ? s.data() : null;
+        return s.exists ? { id: s.data().id || s.id, ...s.data() } : null;
       },
       async listOrders(){
         const s = await db.collection('orders')
           .orderBy('when','desc')
           .limit(100)
           .get();
-        return s.docs.map(d => d.data());
+        return s.docs.map(d => {
+          const data = d.data() || {};
+          return { id: data.id || d.id, ...data };
+        });
       },
       async getPrices(){
         const s = await db.collection('settings').doc('prices').get();
@@ -826,14 +842,12 @@ const fbCfg = {
       }
     };
 
-    // Ping Firestore once so we know if it works
     db.collection('meta').doc('ping')
       .set({ ts: firebase.firestore.FieldValue.serverTimestamp() }, { merge:true })
       .then(async () => {
         window.firebaseReady = true;
         setCloud('Cloud: online');
 
-        // Try to pull prices from cloud once
         try {
           const doc = await window.cloud.getPrices();
           if (doc && doc.map) {
@@ -847,7 +861,7 @@ const fbCfg = {
       .catch(err => {
         console.warn('Firestore ping failed', err);
         setCloud('Cloud: offline');
-        window.cloud = null; // fall back to local-only
+        window.cloud = null;
       });
 
     setCloud('Cloud: connecting…');
