@@ -27,12 +27,17 @@
   }
   .hidden{display:none!important}
   .row{display:flex; gap:10px; flex-wrap:wrap}
-  .pill{background:color-mix(in oklab, var(--card) 70%, #0f1a2d); border:1px solid var(--border); border-radius:999px; padding:6px 10px; white-space:nowrap}
+  .pill{
+    background:color-mix(in oklab, var(--card) 70%, #0f1a2d);
+    border:1px solid var(--border); border-radius:999px;
+    padding:6px 10px; white-space:nowrap;
+  }
   .btn{
-    padding:12px 16px; cursor:pointer;
+    padding:10px 14px; cursor:pointer;
     transition:transform .06s ease, filter .2s ease, background .15s ease, border-color .15s ease;
     font:inherit; border-radius:12px; border:1px solid var(--border);
-    background:color-mix(in oklab, var(--card) 90%, #0e1b30 14%); color:var(--ink)
+    background:color-mix(in oklab, var(--card) 90%, #0e1b30 14%); color:var(--ink);
+    display:inline-flex; align-items:center; justify-content:center;
   }
   .btn:active{transform:translateY(1px)}
   .btn.primary{background:color-mix(in oklab, var(--accent) 14%, var(--card)); border-color:var(--border)}
@@ -42,7 +47,7 @@
   input{
     font:inherit; border-radius:12px; border:1px solid var(--border);
     background:color-mix(in oklab, var(--card) 92%, #0e1b30 14%);
-    color:var(--ink); padding:12px
+    color:var(--ink); padding:12px;
   }
   input[type=number]{text-align:center}
   .wrap{
@@ -55,6 +60,20 @@
     padding:8px 0 10px;
     position:relative;
     background:transparent;
+    flex-wrap:nowrap;
+  }
+  .header-left{align-items:center; gap:8px}
+  .header-nav{
+    display:flex;
+    gap:8px;
+    align-items:center;
+    flex-wrap:wrap;
+    justify-content:flex-end;
+  }
+  .header-hamburger{
+    display:none;
+    padding:8px 10px;
+    border-radius:999px;
   }
 
   .badge{font-size:.72rem; color:var(--bg2); background:var(--accent); padding:4px 8px; border-radius:999px; font-weight:700}
@@ -106,8 +125,20 @@
     40%{transform:scale(1.04); text-shadow:0 0 6px color-mix(in oklab,var(--accent) 60%, #ffffff);}
     100%{transform:scale(1); text-shadow:none;}
   }
+
+  /* Mobile nav panel */
+  .mobile-nav{
+    position:fixed;
+    top:56px;
+    right:10px;
+    z-index:40;
+    width:200px;
+  }
+  .mobile-nav .btn{width:100%; justify-content:flex-start}
+
   @media (max-width:720px){
-    header{flex-direction:column; align-items:flex-start}
+    .header-nav{display:none;}
+    .header-hamburger{display:inline-flex;}
   }
 
   /* Full-screen auth overlay */
@@ -163,8 +194,13 @@
 
 <div class="wrap">
   <header>
-    <h1>Recycling <span class="badge">POS</span></h1>
-    <div class="row" style="gap:8px;align-items:center">
+    <div class="row header-left">
+      <h1 style="margin:0">Recycling <span class="badge">POS</span></h1>
+    </div>
+
+    <button id="navToggle" class="btn header-hamburger" aria-label="Menu">☰</button>
+
+    <div id="navDesktop" class="header-nav">
       <span id="cloudStatus" class="pill">Cloud: offline</span>
       <span id="staffStatus" class="pill">Staff: guest</span>
       <button id="scanBtn" class="btn">Scan</button>
@@ -175,6 +211,13 @@
       <button id="logoutBtn" class="btn">Logout</button>
     </div>
   </header>
+
+  <!-- mobile nav panel -->
+  <div id="navMobilePanel" class="card mobile-nav hidden">
+    <button id="mScan" class="btn primary">Scan</button>
+    <button id="mOrders" class="btn">Orders</button>
+    <button id="mLogout" class="btn">Logout</button>
+  </div>
 
   <div class="row" style="margin-top:14px">
     <!-- ENTRY -->
@@ -339,6 +382,26 @@ function lockClick(btn, fn, ms=300){
   });
 })();
 
+/* Mobile nav */
+on('#navToggle','click', ()=>{
+  const panel = $('#navMobilePanel');
+  if(!panel) return;
+  panel.classList.toggle('hidden');
+});
+['#mScan','#mOrders','#mLogout'].forEach(sel=>{
+  on(sel,'click', ()=>{
+    $('#navMobilePanel').classList.add('hidden');
+    if(sel==='#mScan') $('#scanBtn').click();
+    if(sel==='#mOrders') $('#viewOrders').click();
+    if(sel==='#mLogout') $('#logoutBtn').click();
+  });
+});
+window.addEventListener('resize', ()=>{
+  if(window.innerWidth>720){
+    $('#navMobilePanel').classList.add('hidden');
+  }
+});
+
 /* ---------- Materials ---------- */
 const icons={
   can:`<svg viewBox='0 0 64 64' fill='none'><rect x='18' y='4' width='28' height='56' rx='6' stroke='#7dd3fc' stroke-width='3'/><rect x='22' y='10' width='20' height='44' rx='3' fill='#1a2744'/></svg>`,
@@ -421,6 +484,23 @@ on('#qty','input', ()=>{
   });
 });
 
+/* Auto-clear "0" on focus */
+function setupAutoZero(id){
+  const el=$(id);
+  if(!el) return;
+  el.addEventListener('focus', ()=>{
+    if(el.value==='0' || el.value==='0.0' || el.value==='0.00' || !el.dataset.touched){
+      el.value='';
+    }
+  });
+  el.addEventListener('blur', ()=>{
+    if((el.value||'').trim()==='' || isNaN(+el.value)){
+      el.value='0';
+    }
+    el.dataset.touched='1';
+  });
+}
+
 /* Order state */
 let selectedMat=null;
 const order=[];
@@ -429,7 +509,7 @@ let lastGrandTotal = 0;
 let isSaving=false;
 
 /* Role state */
-let currentRole = null;           // 'superadmin' | 'admin' | 'cashier' | null
+let currentRole = null;
 let isSuperAdmin = false;
 
 /* Material selection highlight helper */
@@ -546,7 +626,6 @@ function addCountItem(per){
     detail:`${qty} × ${(per===0.25?'25¢':per===0.10?'10¢':'5¢')}`
   });
 
-  // reset CNT and quantity after one use
   $('#qty').value='0';
   $('#countPreview').textContent='$0.00';
   $('#cntMode').checked=false;
@@ -572,546 +651,4 @@ function renderOrder(){
   order.forEach((it,i)=>{
     const nm=(materials[it.mat]||{label:it.mat}).label;
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${nm}</td><td>${it.detail}</td><td class="pricecell">${money(it.subtotal)}</td><td><button class="btn-ghost-danger" data-i="${i}">✕</button></td>`;
-    tb.appendChild(tr);
-    if(it.type==='weight') wt+=it.subtotal; else crv+=it.subtotal;
-  });
-
-  $('#crvTotal').textContent=money(crv);
-  $('#weightTotal').textContent=money(wt);
-  const grandCell = $('#grandTotal');
-  const newGrand = crv+wt;
-  grandCell.textContent=money(newGrand);
-
-  if(newGrand !== lastGrandTotal){
-    grandCell.classList.remove('pulse');
-    void grandCell.offsetWidth;
-    grandCell.classList.add('pulse');
-    lastGrandTotal = newGrand;
-  }
-
-  tb.querySelectorAll('button[data-i]').forEach(b=>{
-    b.addEventListener('click',()=>{
-      order.splice(+b.dataset.i,1);
-      renderOrder();
-    });
-  });
-
-  $('#printLast').disabled=!__lastSavedOrder;
-  updateSaveEnabled();
-}
-
-/* Clear with confirmation */
-let clearArmed=false;
-on('#clearOrder','click', ()=>{
-  const btn=$('#clearOrder');
-  if(!order.length){ return; }
-  if(!clearArmed){
-    clearArmed=true;
-    const prev=btn.textContent;
-    btn.textContent='Tap again to clear';
-    setTimeout(()=>{ clearArmed=false; btn.textContent=prev; },1500);
-    return;
-  }
-  clearArmed=false;
-  order.length=0;
-  renderOrder();
-});
-
-/* ---------- Firebase ---------- */
-const fbCfg = {
-  apiKey: "AIzaSyCSRYYjuJyO6_N2n9RaA8T2fXRaHiC3q6o",
-  authDomain: "recycle-cb24b.firebaseapp.com",
-  projectId: "recycle-cb24b",
-  storageBucket: "recycle-cb24b.firebasestorage.app",
-  messagingSenderId: "281209650356",
-  appId: "1:281209650356:web:a3b55a3b4d7ce5e642abe1",
-  measurementId: "G-4DFFS1RH83"
-};
-firebase.initializeApp(fbCfg);
-const auth = firebase.auth();
-const db   = firebase.firestore();
-db.enablePersistence({synchronizeTabs:true}).catch(()=>{});
-
-/* ---- Roles helpers ---- */
-async function ensureUserRoleDoc(user){
-  isSuperAdmin = user.email === 'zoptris@gmail.com';
-  const uid = user.uid;
-  const ref = db.collection('users').doc(uid);
-  const snap = await ref.get();
-
-  if(!snap.exists){
-    const defaultRole = isSuperAdmin ? 'superadmin' : 'cashier';
-    await ref.set({
-      email: user.email || null,
-      role: defaultRole,
-      createdAt: new Date().toISOString()
-    });
-    currentRole = defaultRole;
-  }else{
-    const data = snap.data() || {};
-    currentRole = data.role || (isSuperAdmin ? 'superadmin' : 'cashier');
-  }
-}
-
-function roleLabel(role){
-  if(!role) return 'Unknown';
-  if(role === 'superadmin') return 'Superadmin';
-  if(role === 'admin') return 'Admin';
-  if(role === 'cashier') return 'Cashier';
-  return role;
-}
-
-function applyRoleUI(){
-  const user = auth.currentUser;
-  const staff = $('#staffStatus');
-  const email = user?.email || 'unknown';
-  staff.textContent = `Staff: ${email} (${roleLabel(currentRole)})`;
-
-  const isAdminLike = currentRole === 'superadmin' || currentRole === 'admin';
-
-  // Only admin/superadmin can edit prices & roles
-  $('#openPrices').style.display = isAdminLike ? '' : 'none';
-  $('#manageStaff').style.display = isAdminLike ? '' : 'none';
-
-  // Everyone with a role can view orders
-  $('#viewOrders').style.display = (currentRole ? '' : 'none');
-
-  updateSaveEnabled();
-}
-
-/* Auth state */
-auth.onAuthStateChanged(async user=>{
-  const app=$('.wrap');
-  const authScreen=$('#authScreen');
-  if(user){
-    setCloud('Cloud: online');
-    $('#loginHint').textContent='';
-    try{
-      await ensureUserRoleDoc(user);
-    }catch(e){
-      console.error('role load error', e);
-      currentRole = null;
-    }
-    applyRoleUI();
-    if(authScreen) authScreen.style.display='none';
-    if(app) app.style.display='block';
-    setTimeout(()=>$('#pounds').focus(), 200);
-  }else{
-    setCloud('Cloud: offline');
-    currentRole = null;
-    if(app) app.style.display='none';
-    if(authScreen) authScreen.style.display='flex';
-    $('#staffStatus').textContent='Staff: guest';
-  }
-});
-
-/* Login + logout */
-on('#loginBtn','click', ()=>{
-  const btn = $('#loginBtn');
-  lockClick(btn, async ()=>{
-    const email=$('#loginEmail').value.trim();
-    const pass=$('#loginPass').value.trim();
-    const hint=$('#loginHint');
-    hint.textContent='Signing in…';
-    hint.classList.remove('error');
-    try{
-      await auth.signInWithEmailAndPassword(email,pass);
-      hint.textContent='Signed in ✔';
-      setTimeout(()=>{ hint.textContent=''; },1200);
-    }catch(e){
-      console.error(e);
-      const code=e.code||'';
-      const map={
-        'auth/invalid-email':'Invalid email.',
-        'auth/user-not-found':'User not found.',
-        'auth/wrong-password':'Wrong password.'
-      };
-      hint.textContent=map[code]||('Login failed: '+code);
-      hint.classList.add('error');
-    }
-  });
-});
-on('#logoutBtn','click', ()=>{
-  lockClick($('#logoutBtn'), async ()=>{
-    try{ await auth.signOut(); $('#loginHint').textContent='Signed out'; }catch{}
-  });
-});
-
-/* ---------- Save Order to Firestore ---------- */
-function currentTotals(){
-  return {
-    crv: $('#crvTotal').textContent||'$0.00',
-    weight: $('#weightTotal').textContent||'$0.00',
-    grand: $('#grandTotal').textContent||'$0.00'
-  };
-}
-async function saveOrderToCloud(){
-  const hint=$('#saveHint');
-  hint.textContent='';
-  hint.classList.remove('error');
-  if(!order.length){ hint.textContent='Add some items first.'; return; }
-  if(!auth.currentUser){ hint.textContent='Sign in first.'; return; }
-
-  const payload={
-    id:'SR-'+Date.now(),
-    when:new Date().toISOString(),
-    staff: auth.currentUser.email || auth.currentUser.uid,
-    role: currentRole || null,
-    items:[...order],
-    totals:currentTotals()
-  };
-
-  try{
-    isSaving=true;
-    updateSaveEnabled();
-    const btn=$('#saveOrder');
-    const prevText=btn.textContent;
-    btn.textContent='Saving…';
-    await db.collection('orders').doc(payload.id).set(payload);
-    __lastSavedOrder=payload;
-    order.length=0;
-    renderOrder();
-    hint.textContent='Saved to cloud ✔';
-    btn.textContent=prevText;
-    isSaving=false;
-    updateSaveEnabled();
-    setTimeout(()=>{ hint.textContent=''; },1500);
-  }catch(e){
-    console.error('Save failed', e);
-    isSaving=false;
-    updateSaveEnabled();
-    hint.textContent='Save failed: '+(e.code||e.message||String(e));
-    hint.classList.add('error');
-  }
-}
-on('#saveOrder','click', ()=>lockClick($('#saveOrder'), saveOrderToCloud, 400));
-
-/* ---------- Prices (cloud sync) ---------- */
-function buildPricesForm(){
-  const grid=$('#priceGrid');
-  grid.innerHTML='';
-  Object.keys(materials).forEach(k=>{
-    if(materials[k].unit!=='lb') return;
-    const row=document.createElement('div');
-    row.className='row';
-    row.style.flexDirection='column';
-    row.innerHTML=`<label>${materials[k].label}</label>
-                   <input type="number" step="0.001" id="p_${k}" value="${prices[k]??''}" placeholder="$/lb">`;
-    grid.appendChild(row);
-  });
-  const jb=document.createElement('div');
-  jb.className='row';
-  jb.style.flexDirection='column';
-  jb.innerHTML=`<label>Paperboard Carton (BeatBox) – price each</label>
-                <input type="number" step="0.01" id="p_JuiceBox_each" value="${prices.JuiceBox_each??0.25}" placeholder="$/ea">`;
-  grid.appendChild(jb);
-}
-on('#openPrices','click', ()=>{ buildPricesForm(); pricesModal.showModal(); });
-
-on('#refreshPrices','click', async ()=>{
-  try{
-    const snap=await db.collection('settings').doc('prices').get();
-    if(snap.exists){
-      const data=snap.data();
-      if(data.map){ prices={...prices,...data.map}; buildPricesForm(); $('#priceSyncState').textContent='Cloud prices: loaded'; }
-    }else{
-      $('#priceSyncState').textContent='Cloud prices: not set';
-    }
-  }catch(e){
-    console.error(e);
-    $('#priceSyncState').textContent='Cloud prices: error';
-  }
-});
-on('#savePrices','click', async ()=>{
-  const next={};
-  Object.keys(materials).forEach(k=>{
-    if(materials[k].unit==='lb'){
-      const el=$('#p_'+k);
-      next[k]=+(el?.value||0)||0;
-    }
-  });
-  next.JuiceBox_each=+(($('#p_JuiceBox_each')||{}).value||0.25)||0.25;
-  prices={...prices,...next};
-  try{
-    await db.collection('settings').doc('prices').set({map:prices,updatedAt:new Date().toISOString()});
-    $('#priceSyncState').textContent='Cloud prices: saved ✔';
-  }catch(e){
-    console.error(e);
-    $('#priceSyncState').textContent='Cloud prices: save error';
-  }
-  pricesModal.close();
-});
-
-/* ---------- Orders list + barcode + receipt ---------- */
-function showBarcode(id){
-  $('#barcodeHint').textContent=id;
-  try{
-    JsBarcode('#barcodeSVG', id, {
-      format:'CODE128',
-      lineColor:'#000000',
-      background:'#ffffff',
-      width:2,
-      height:80,
-      margin:6,
-      displayValue:true,
-      fontSize:18
-    });
-  }catch(e){
-    console.error('Barcode error', e);
-    $('#barcodeHint').textContent='Barcode error: '+(e.message||e);
-  }
-  barcodeModal.showModal();
-}
-
-async function printReceipt(order){
-  if(!order){ alert('No order to print'); return; }
-  const items=order.items||[];
-  const lines=items.map(it=>{
-    const name=(materials[it.mat]||{label:it.mat}).label;
-    return `<tr><td>${name}</td><td>${it.detail}</td></tr>`;
-  }).join('');
-  const grand=order.totals?.grand||'$0.00';
-  const when=new Date(order.when||Date.now()).toLocaleString();
-  const id=order.id||'UNSAVED';
-
-  const html=`<!doctype html><html><head><meta charset="utf-8"><title>${id}</title>
-  <style>@media print{@page{margin:8mm}body{margin:0}}body{font-family:ui-monospace,monospace;padding:12px;color:#111}
-  table{width:100%;border-collapse:collapse;margin-top:6px}th,td{padding:4px 0;border-bottom:1px dashed #ccc;font-size:14px}
-  thead th{border-bottom:1px solid #000}</style></head><body>
-  <div><b>Recycling Receipt</b></div>
-  <div>${when}</div><div>Order ID: <b>${id}</b></div>
-  <table><thead><tr><th>Item</th><th>Detail</th></tr></thead>
-  <tbody>${lines||'<tr><td colspan="2">No items</td></tr>'}</tbody>
-  <tfoot><tr><td colspan="2" style="text-align:right;font-size:16px">GRAND TOTAL: ${grand}</td></tr></tfoot></table>
-  <script>window.onload=()=>{window.print(); setTimeout(()=>window.close(),300);};<\/script></body></html>`;
-  const w=window.open('','receipt');
-  if(!w){ alert('Popup blocked by browser'); return; }
-  w.document.write(html);
-  w.document.close();
-}
-
-on('#printLast','click', ()=>{ if(__lastSavedOrder) printReceipt(__lastSavedOrder); });
-
-on('#viewOrders','click', async ()=>{
-  const list=$('#ordersList');
-  list.innerHTML='';
-  try{
-    const snap=await db.collection('orders').orderBy('when','desc').limit(50).get();
-    if(snap.empty){ list.innerHTML='<div class="hint">No orders yet.</div>'; ordersModal.showModal(); return; }
-    snap.forEach(doc=>{
-      const o=doc.data();
-      const div=document.createElement('div');
-      div.className='card';
-      const header=document.createElement('div');
-      header.className='row';
-      header.style.justifyContent='space-between';
-      header.style.alignItems='center';
-
-      const leftWrap=document.createElement('div');
-      leftWrap.style.display='flex';
-      leftWrap.style.flexDirection='column';
-      leftWrap.style.gap='2px';
-
-      const left=document.createElement('b');
-      left.textContent=o.id;
-      const info=document.createElement('span');
-      info.className='hint';
-      info.textContent=new Date(o.when).toLocaleString() + (o.staff ? ` · ${o.staff}` : '');
-      leftWrap.append(left,info);
-
-      const btnRow=document.createElement('div');
-      btnRow.className='row';
-      const codeBtn=document.createElement('button');
-      codeBtn.className='btn';
-      codeBtn.textContent='Barcode';
-      codeBtn.addEventListener('click',()=>showBarcode(o.id));
-      const rcptBtn=document.createElement('button');
-      rcptBtn.className='btn';
-      rcptBtn.textContent='Receipt';
-      rcptBtn.addEventListener('click',()=>printReceipt(o));
-      btnRow.append(codeBtn,rcptBtn);
-
-      header.append(leftWrap,btnRow);
-      const ul=document.createElement('ul');
-      ul.innerHTML=(o.items||[]).map(it=>`<li>${(materials[it.mat]||{label:it.mat}).label} — ${it.detail} <b>${money(it.subtotal)}</b></li>`).join('');
-      const totals=document.createElement('div');
-      totals.className='row';
-      totals.style.justifyContent='flex-end';
-      totals.style.gap='16px';
-      totals.innerHTML=`<span>CRV: <b>${o.totals?.crv||'$0.00'}</b></span>
-                        <span>Weight: <b>${o.totals?.weight||'$0.00'}</b></span>
-                        <span>Grand: <b>${o.totals?.grand||'$0.00'}</b></span>`;
-      div.append(header,ul,totals);
-      list.appendChild(div);
-    });
-    ordersModal.showModal();
-  }catch(e){
-    console.error(e);
-    list.innerHTML='<div class="hint error">Error loading orders (check rules / auth).</div>';
-    ordersModal.showModal();
-  }
-});
-
-/* ---------- Staff / Roles UI ---------- */
-on('#manageStaff','click', async ()=>{
-  const list=$('#staffList');
-  list.innerHTML='<div class="hint">Loading staff…</div>';
-  try{
-    const snap=await db.collection('users').orderBy('email').get();
-    if(snap.empty){
-      list.innerHTML='<div class="hint">No staff docs yet. They appear after a user logs in once.</div>';
-    }else{
-      list.innerHTML='';
-      snap.forEach(doc=>{
-        const u=doc.data();
-        const uid=doc.id;
-        const row=document.createElement('div');
-        row.className='card';
-        row.style.marginBottom='8px';
-
-        const top=document.createElement('div');
-        top.className='row';
-        top.style.justifyContent='space-between';
-        top.style.alignItems='center';
-
-        const left=document.createElement('div');
-        left.style.display='flex';
-        left.style.flexDirection='column';
-        left.innerHTML=`<b>${u.email||uid}</b><span class="hint">${uid}</span>`;
-
-        const right=document.createElement('div');
-        right.className='row';
-        right.style.alignItems='center';
-        right.style.gap='8px';
-        const sel=document.createElement('select');
-        ['superadmin','admin','cashier'].forEach(role=>{
-          const opt=document.createElement('option');
-          opt.value=role;
-          opt.textContent=roleLabel(role);
-          if((u.role||'')===role) opt.selected=true;
-          sel.appendChild(opt);
-        });
-        sel.style.padding='6px 8px';
-        sel.style.borderRadius='8px';
-        sel.style.border='1px solid var(--border)';
-        sel.style.background='color-mix(in oklab,var(--card) 92%, #0e1b30 14%)';
-        sel.style.color='var(--ink)';
-
-        const saveBtn=document.createElement('button');
-        saveBtn.className='btn';
-        saveBtn.textContent='Update';
-
-        saveBtn.addEventListener('click', ()=>{
-          lockClick(saveBtn, async ()=>{
-            const newRole = sel.value;
-            saveBtn.textContent='Saving…';
-            try{
-              await db.collection('users').doc(uid).update({
-                role:newRole,
-                updatedAt:new Date().toISOString(),
-                updatedBy: auth.currentUser?.email || auth.currentUser?.uid || null
-              });
-              saveBtn.textContent='Saved';
-              setTimeout(()=>{ saveBtn.textContent='Update'; },1000);
-              if(uid === auth.currentUser.uid){
-                currentRole=newRole;
-                applyRoleUI();
-              }
-            }catch(e){
-              console.error(e);
-              saveBtn.textContent='Error';
-              setTimeout(()=>{ saveBtn.textContent='Update'; },1200);
-            }
-          });
-        });
-
-        right.append(sel,saveBtn);
-        top.append(left,right);
-        row.append(top);
-        list.appendChild(row);
-      });
-    }
-  }catch(e){
-    console.error(e);
-    list.innerHTML='<div class="hint error">Failed to load staff (check rules).</div>';
-  }
-  staffModal.showModal();
-});
-
-/* ---------- Scanner (barcode) ---------- */
-let stream=null, codeReader=null;
-
-on('#scanBtn','click', ()=>{
-  $('#scanOrder').style.display='none';
-  $('#scanResult').textContent='Point camera at barcode.';
-  $('#scanResult').classList.remove('error');
-  scanModal.showModal();
-});
-on('#startCam','click', ()=>{
-  if(stream){ stopScan(); } else { startScan(); }
-});
-async function startScan(){
-  try{
-    if(!navigator.mediaDevices?.getUserMedia){
-      $('#camState').textContent='Camera: unsupported';
-      return;
-    }
-    $('#camState').textContent='Camera: starting…';
-    stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}}});
-    const v=$('#video');
-    v.srcObject=stream;
-    await v.play();
-    $('#camState').textContent='Camera: on ✔';
-    codeReader = new ZXing.BrowserMultiFormatReader();
-    await codeReader.decodeFromVideoDevice(null, v, async (result,err)=>{
-      if(result){
-        const val=result.getText?result.getText():result.text||'';
-        if(val){ await onScan(val); }
-      }
-    });
-  }catch(e){
-    console.error(e);
-    $('#camState').textContent='Camera: error';
-    $('#scanResult').textContent=e.message||e;
-    $('#scanResult').classList.add('error');
-  }
-}
-function stopScan(){
-  try{
-    if(codeReader){ codeReader.reset(); codeReader=null; }
-    if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
-    $('#camState').textContent='Camera: idle';
-  }catch(e){}
-}
-async function onScan(val){
-  stopScan();
-  $('#scanResult').textContent='Scanned: '+val;
-  $('#scanResult').classList.remove('error');
-  let o=null;
-  try{ const snap=await db.collection('orders').doc(val).get(); if(snap.exists) o=snap.data(); }catch(e){ console.error(e); }
-  if(o){
-    const rows=(o.items||[]).map(it=>`<li>${(materials[it.mat]||{label:it.mat}).label} — ${it.detail} <b>${money(it.subtotal)}</b></li>`).join('');
-    $('#scanOrder').style.display='block';
-    $('#scanOrder').innerHTML=`<h3 style="margin:10px 0">${o.id}</h3>
-      <div class="hint">${new Date(o.when).toLocaleString()}</div>
-      <ul>${rows}</ul>
-      <div class="row" style="justify-content:flex-end;gap:16px">
-        <span>CRV: <b>${o.totals?.crv||'$0.00'}</b></span>
-        <span>Weight: <b>${o.totals?.weight||'$0.00'}</b></span>
-        <span>Grand: <b>${o.totals?.grand||'$0.00'}</b></span>
-      </div>`;
-  }else{
-    $('#scanOrder').style.display='block';
-    $('#scanOrder').innerHTML="<div class='hint error'>No order with that ID.</div>";
-  }
-}
-
-/* Autofocus on first load */
-window.addEventListener('load', ()=>{
-  const w = $('#pounds');
-  if(w){ setTimeout(()=>w.focus(), 300); }
-});
-</script>
-</body>
-</html>
+    tr.innerHTML=`<td>${nm}</td><td>${it.detail}</td><td class="pricecell">${money(it.subtotal)}</td><td><button class="btn-ghost-danger" data-i="${i}">
