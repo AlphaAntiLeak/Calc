@@ -112,7 +112,8 @@
     <p class="subtitle">Sign in with the admin account to use POS.</p>
     <div class="row" style="flex-direction:column; gap:8px">
       <label>Email</label>
-      <input id="authEmail" placeholder="zoptris@gmail.com" autocomplete="username" />
+      <!-- placeholder now generic, not your real email -->
+      <input id="authEmail" placeholder="example@gmail.com" autocomplete="username" />
       <label>Password</label>
       <input id="authPass" type="password" placeholder="••••••••" autocomplete="current-password" />
       <div class="row" style="justify-content:space-between; align-items:center">
@@ -239,7 +240,7 @@
     </div>
   </dialog>
 
-  <!-- Code Modal (Barcode) -->
+  <!-- Code Modal (Barcode + QR) -->
   <dialog id="barcodeModal" style="border:0;padding:0;border-radius:16px;background:#ffffff;color:#000000;width:min(560px,96vw)">
     <div style="padding:16px">
       <div class="row" style="justify-content:space-between;align-items:center">
@@ -254,6 +255,10 @@
         <div style="display:inline-block;background:#ffffff;padding:20px;border-radius:12px;border:1px solid #ccc">
           <svg id="barcodeSvg" style="width:100%;max-width:420px;height:140px;background:#ffffff;border-radius:6px"></svg>
         </div>
+      </div>
+      <!-- Extra: QR for scanners that prefer it -->
+      <div style="margin-top:12px;text-align:center">
+        <canvas id="barcodeQr" width="180" height="180" style="width:180px;height:180px;max-width:60%;background:#ffffff;border-radius:6px"></canvas>
       </div>
       <div class="hint" id="barcodeHint" style="margin-top:8px;word-break:break-all;text-align:center;color:#444"></div>
     </div>
@@ -554,43 +559,45 @@ function saveOrders(arr){
   localStorage.setItem(ORDERS_KEY, JSON.stringify(arr.slice(0,100)));
 }
 
+/* NEW: save always locally, then try cloud */
 async function saveOrderCommon(){
-  try{
-    set('#saveHint','');
-    if(!order.length){
-      set('#saveHint','Add some items first.');
-      return;
-    }
-    if(!window.firebaseReady || !window.cloud || !window.auth || !window.auth.currentUser){
-      set('#saveHint','Sign in first (top-right).');
-      return;
-    }
-
-    const payload={
-      id:'SR-'+Date.now(),
-      when:new Date().toISOString(),
-      items:[...order],
-      totals: currentTotals()
-    };
-
-    // local
-    const all = loadOrders();
-    all.unshift(payload);
-    saveOrders(all);
-
-    // cloud (with auth, should now pass rules)
-    await window.cloud.saveOrder(payload);
-
-    __lastSavedOrder = payload;
-    $('#printLast').disabled=false;
-    order.splice(0,order.length); render();
-    set('#saveHint','Saved to cloud ✔');
-    if('vibrate' in navigator) navigator.vibrate?.(10);
-    setTimeout(()=>set('#saveHint',''),1500);
-  }catch(err){
-    console.error('Save failed',err);
-    set('#saveHint','Save failed: '+(err.code||err.message||String(err)));
+  set('#saveHint','');
+  if(!order.length){
+    set('#saveHint','Add some items first.');
+    return;
   }
+
+  const payload={
+    id:'SR-'+Date.now(),
+    when:new Date().toISOString(),
+    items:[...order],
+    totals: currentTotals()
+  };
+
+  // 1) Always save locally so Orders list works no matter what
+  const localAll = loadOrders();
+  localAll.unshift(payload);
+  saveOrders(localAll);
+
+  __lastSavedOrder = payload;
+  order.splice(0,order.length);
+  render();
+
+  // 2) Try cloud if logged in
+  if(window.firebaseReady && window.cloud && window.auth && window.auth.currentUser){
+    try{
+      await window.cloud.saveOrder(payload);
+      set('#saveHint','Saved (cloud + local) ✔');
+    }catch(err){
+      console.error('Cloud save failed', err);
+      set('#saveHint','Saved locally (cloud failed: '+(err.code||'error')+')');
+    }
+  }else{
+    set('#saveHint','Saved locally (not signed in).');
+  }
+
+  if('vibrate' in navigator) navigator.vibrate?.(10);
+  setTimeout(()=>set('#saveHint',''),2000);
 }
 on('#saveOrder', ()=>{ saveOrderCommon(); });
 
@@ -634,20 +641,30 @@ on('#savePrices','click', async ()=>{
   document.getElementById('pricesModal').close();
 });
 
+/* merge helper for orders */
+function mergeOrders(localArr, cloudArr){
+  const byId={};
+  (localArr||[]).forEach(o=>{ if(o && o.id) byId[o.id]=o; });
+  (cloudArr||[]).forEach(o=>{ if(o && o.id) byId[o.id]=o; });
+  return Object.values(byId).sort((a,b)=>{
+    return new Date(b.when||0) - new Date(a.when||0);
+  });
+}
+
 /* Orders modal */
 on('#viewOrders','click', async ()=>{
   const list=$('#ordersList'); list.innerHTML='';
-  let all=[];
+  let all = loadOrders();
   try{
     if(window.firebaseReady && window.cloud && window.auth && window.auth.currentUser){
-      all = await window.cloud.listOrders();
-      if(all && all.length) saveOrders(all);
-    }else{
-      all = loadOrders();
+      const fromCloud = await window.cloud.listOrders();
+      if(fromCloud && fromCloud.length){
+        all = mergeOrders(all, fromCloud);
+        saveOrders(all);
+      }
     }
   }catch(e){
     console.warn('orders cloud list failed',e);
-    all = loadOrders();
   }
 
   if(!all || !all.length){
@@ -678,7 +695,7 @@ on('#viewOrders','click', async ()=>{
   document.getElementById('ordersModal').showModal();
 });
 
-/* Barcode helpers: high contrast for scanners */
+/* Barcode helpers: high contrast + QR */
 function showBarcode(text){
   const value = text && String(text).trim() ? String(text).trim() : 'NO-ID';
   set('#barcodeHint', value);
@@ -701,6 +718,27 @@ function showBarcode(text){
     console.warn('JsBarcode error', e);
     svg.innerHTML = '';
   }
+
+  // QR fallback for scanners that like QR better
+  const qrCanvas = $('#barcodeQr');
+  if(qrCanvas){
+    const ctx = qrCanvas.getContext('2d');
+    if(ctx){
+      ctx.clearRect(0,0,qrCanvas.width,qrCanvas.height);
+    }
+    try{
+      QRCode.toCanvas(qrCanvas, value, {
+        width: 180,
+        margin: 2,
+        color: { dark: '#000000', light: '#ffffff' }
+      }, function(err){
+        if(err) console.warn('QR error', err);
+      });
+    }catch(e){
+      console.warn('QR lib err', e);
+    }
+  }
+
   document.getElementById('barcodeModal').showModal();
 }
 on('#printBar','click', ()=>{
@@ -918,7 +956,8 @@ const fbCfg = {
 
     auth.onAuthStateChanged((user)=>{
       if(user){
-        setCloud('Cloud: online ('+(user.email||'user')+')');
+        // security-ish: don't show actual email in status pill
+        setCloud('Cloud: online (admin)');
         $('#authScreen').classList.add('hidden');
         $('#appShell').classList.remove('hidden');
       }else{
@@ -949,15 +988,8 @@ on('#authLogin','click', async ()=>{
     set('#authHint','Signed in ✔');
   }catch(e){
     console.error(e);
-    const code = e.code || '';
-    const map={
-      'auth/invalid-email':'Invalid email.',
-      'auth/user-not-found':'No user with that email.',
-      'auth/wrong-password':'Wrong password.',
-      'auth/invalid-credential':'Invalid credentials.',
-      'auth/network-request-failed':'Network error.'
-    };
-    set('#authHint', map[code] || ('Login failed: '+code));
+    // generic error text so it doesn't leak which part is wrong
+    set('#authHint','Login failed. Check your email or password.');
   }
 });
 on('#logoutBtn','click', async ()=>{
