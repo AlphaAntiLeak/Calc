@@ -69,8 +69,9 @@
   }
 </style>
 
-<!-- QR + Scanner libs -->
+<!-- QR / barcode / scanner libs -->
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js"></script>
 
 <!-- Firebase compat (Firestore only) -->
@@ -190,7 +191,7 @@
     </div>
   </dialog>
 
-  <!-- Code Modal -->
+  <!-- Code Modal (Barcode) -->
   <dialog id="barcodeModal" style="border:0;padding:0;border-radius:16px;background:var(--card);color:var(--ink);width:min(560px,96vw)">
     <div class="card" style="border:0">
       <div class="row" style="justify-content:space-between;align-items:center">
@@ -201,7 +202,7 @@
         </div>
       </div>
       <div style="width:100%;text-align:center">
-        <canvas id="qrCanvas" style="width:100%;max-width:320px;height:auto;background:#ffffff;border-radius:12px"></canvas>
+        <svg id="barcodeSvg" style="width:100%;max-width:420px;height:140px;background:#ffffff;border-radius:12px"></svg>
       </div>
       <div class="hint" id="barcodeHint" style="margin-top:8px;word-break:break-all;text-align:center"></div>
     </div>
@@ -346,11 +347,11 @@ function onMaterial(key){
     if(!qty){ flashHint('Enter count first'); return; }
     showPanel();
     if(key==='BagInBox' || key==='Pouch' || key==='JuiceBox'){
-      p.append(makeBtn('25¢ each',()=>{addCountItem(0.25); restoreGrid();}));
+      p.append(makeBtn('25¢ each',()=>{addCountItem(0.25);}));   // auto restore in addCountItem
     }else{
       p.append(
-        makeBtn('< 24 oz (5¢)', ()=>{addCountItem(0.05); restoreGrid();} ),
-        makeBtn('≥ 24 oz (10¢)',()=>{addCountItem(0.10); restoreGrid();} )
+        makeBtn('< 24 oz (5¢)', ()=>{addCountItem(0.05);} ),
+        makeBtn('≥ 24 oz (10¢)',()=>{addCountItem(0.10);} )
       );
     }
   }else{
@@ -426,6 +427,10 @@ function addCountItem(per){
     detail:`${qty} × ${(per===0.25?'25¢':per===0.10?'10¢':'5¢')}`
   });
   $('#qty').value='0';
+  // auto exit CNT mode after one use
+  const cnt = $('#cntMode');
+  if(cnt){ cnt.checked=false; updatePanels(); }
+  restoreGrid();
   render();
 }
 
@@ -448,7 +453,7 @@ function render(){
   $('#printLast').disabled = order.length===0;
 }
 
-/* Clear with confirmation */
+/* Clear with confirmation double-tap */
 let clearConfirm=false;
 on('#clearOrder','click',()=>{
   if(!order.length) return;
@@ -488,45 +493,50 @@ on('#printLast', ()=>{ if(__lastSavedOrder) printReceipt(__lastSavedOrder); else
 
 function loadOrders(){
   try{ return JSON.parse(localStorage.getItem(ORDERS_KEY)||'[]'); }
-  catch(e){ return []; }
+  catch(e){ console.warn('orders parse error',e); return []; }
 }
 function saveOrders(arr){
   localStorage.setItem(ORDERS_KEY, JSON.stringify(arr.slice(0,100)));
 }
 
 async function saveOrderCommon(){
-  set('#saveHint','');
-  if(!order.length){
-    set('#saveHint','Add some items first.');
-    return;
-  }
-
-  const payload={
-    id:'SR-'+Date.now(),
-    when:new Date().toISOString(),
-    items:[...order],
-    totals: currentTotals()
-  };
-
-  // local
-  const all = loadOrders();
-  all.unshift(payload);
-  saveOrders(all);
-
-  // cloud best-effort
   try{
-    if(window.cloud) await window.cloud.saveOrder(payload);
-  }catch(e){
-    console.warn('cloud save failed',e);
-    set('#saveHint','Saved locally (cloud error).');
-  }
+    set('#saveHint','');
+    if(!order.length){
+      set('#saveHint','Add some items first.');
+      return;
+    }
 
-  __lastSavedOrder = payload;
-  $('#printLast').disabled=false;
-  order.splice(0,order.length); render();
-  if(!$('#saveHint').textContent) set('#saveHint','Saved ✔');
-  if('vibrate' in navigator) navigator.vibrate?.(10);
-  setTimeout(()=>set('#saveHint',''),1500);
+    const payload={
+      id:'SR-'+Date.now(),
+      when:new Date().toISOString(),
+      items:[...order],
+      totals: currentTotals()
+    };
+
+    // local
+    const all = loadOrders();
+    all.unshift(payload);
+    saveOrders(all);
+
+    // cloud best-effort
+    try{
+      if(window.cloud) await window.cloud.saveOrder(payload);
+    }catch(e){
+      console.warn('cloud save failed',e);
+      set('#saveHint','Saved locally (cloud error).');
+    }
+
+    __lastSavedOrder = payload;
+    $('#printLast').disabled=false;
+    order.splice(0,order.length); render();
+    if(!$('#saveHint').textContent) set('#saveHint','Saved ✔');
+    if('vibrate' in navigator) navigator.vibrate?.(10);
+    setTimeout(()=>set('#saveHint',''),1500);
+  }catch(err){
+    console.error('Save failed',err);
+    set('#saveHint','Save failed: '+(err.message||String(err)));
+  }
 }
 on('#saveOrder', ()=>{ saveOrderCommon(); });
 
@@ -610,44 +620,45 @@ on('#viewOrders','click', async ()=>{
   document.getElementById('ordersModal').showModal();
 });
 
-/* QR for orders */
+/* Barcode + QR helpers */
 function codeColors(){
   const isLight = document.documentElement.getAttribute('data-theme')==='light';
   return isLight
-    ? { dark:'#111111', light:'#ffffff' }
-    : { dark:'#000000', light:'#ffffff' };
+    ? { line:'#111111', bg:'#ffffff' }
+    : { line:'#000000', bg:'#ffffff' }; // white background so visible in dark
 }
 function showBarcode(text){
   const value = text && String(text).trim() ? String(text).trim() : 'NO-ID';
   set('#barcodeHint', value);
 
-  const canvas = $('#qrCanvas');
-  const ctx = canvas.getContext('2d');
-  // white background
-  const w = canvas.width = 320;
-  const h = canvas.height = 320;
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0,0,w,h);
-
+  const svg = $('#barcodeSvg');
+  const cc = codeColors();
   try{
-    const cc = codeColors();
-    QRCode.toCanvas(canvas, value, {
-      width: 320,
-      margin: 1,
-      color:{ dark: cc.dark, light: cc.light }
-    }, function(err){
-      if(err) console.warn('QR error', err);
+    JsBarcode(svg, value, {
+      format: 'CODE128',
+      lineColor: cc.line,
+      background: cc.bg,
+      width: 2,
+      height: 80,
+      margin: 10,
+      displayValue: true,
+      fontSize: 18
     });
-  }catch(e){ console.warn('QR lib error', e); }
-
+  }catch(e){
+    console.warn('JsBarcode error', e);
+    svg.innerHTML = '';
+  }
   document.getElementById('barcodeModal').showModal();
 }
 on('#printBar','click', ()=>{
-  const canvas=$('#qrCanvas');
+  const svg=$('#barcodeSvg');
+  const data = new XMLSerializer().serializeToString(svg);
+  const blob = new Blob([data], {type: 'image/svg+xml'});
+  const url = URL.createObjectURL(blob);
   const w=window.open('','printqr');
   const html=`<!doctype html><html><head><meta charset="utf-8"><title>Order Code</title>
   <style>body{margin:0;padding:20px;text-align:center;background:#fff}</style></head>
-  <body><img src="${canvas.toDataURL('image/png')}" style="max-width:320px;width:100%">
+  <body><img src="${url}" style="max-width:420px;width:100%">
   <script>window.onload=function(){setTimeout(function(){window.print();setTimeout(function(){window.close();},300);},200);};<\/script>
   </body></html>`;
   w.document.write(html);
@@ -728,7 +739,7 @@ async function onScan(val){
   }
 }
 
-/* Receipt printing */
+/* Receipt printing (last saved order) */
 function buildReceiptHTML(order){
   const items = (order.items||[]);
   const lines = items.map(it=>{
@@ -789,7 +800,7 @@ function printReceipt(order){
   w.document.close();
 }
 
-/* Firebase: Firestore only */
+/* Firebase: Firestore only (no auth) */
 window.cloud = null;
 window.firebaseReady = false;
 
@@ -818,7 +829,9 @@ const fbCfg = {
       async saveOrder(o){ return db.collection('orders').doc(o.id).set(o); },
       async getOrder(id){
         const s = await db.collection('orders').doc(id).get();
-        return s.exists ? { id: s.data().id || s.id, ...s.data() } : null;
+        if(!s.exists) return null;
+        const data = s.data() || {};
+        return { id: data.id || s.id, ...data };
       },
       async listOrders(){
         const s = await db.collection('orders')
@@ -847,7 +860,6 @@ const fbCfg = {
       .then(async () => {
         window.firebaseReady = true;
         setCloud('Cloud: online');
-
         try {
           const doc = await window.cloud.getPrices();
           if (doc && doc.map) {
