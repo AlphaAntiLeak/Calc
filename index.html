@@ -109,4 +109,918 @@
       <h1 style="margin:0;font-size:1.6rem">Login</h1>
     </div>
     <p class="subtitle">Sign in with the admin account to use POS.</p>
-    <div
+    <div class="row" style="flex-direction:column; gap:8px">
+      <label>Email</label>
+      <input id="authEmail" placeholder="example@gmail.com" autocomplete="username" />
+      <label>Password</label>
+      <input id="authPass" type="password" placeholder="••••••••" autocomplete="current-password" />
+      <div class="row" style="justify-content:space-between; align-items:center">
+        <span id="authHint" class="hint">Enter your email and password.</span>
+        <button id="authLogin" class="btn success">Sign in</button>
+      </div>
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <span id="cloudStatusAuth" class="pill">Cloud: connecting…</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="appShell" class="hidden">
+  <div class="wrap">
+    <header>
+      <h1>Recycling<span class="badge">POS</span></h1>
+      <div class="row" style="gap:8px;align-items:center">
+        <span id="cloudStatus" class="pill">Cloud: offline</span>
+        <button id="scanBtn" class="btn">Scan</button>
+        <button id="openPrices" class="btn">Prices</button>
+        <button id="viewOrders" class="btn">Orders</button>
+        <button id="themeBtn" class="btn" title="Toggle theme">☀︎/🌙</button>
+        <button id="logoutBtn" class="btn">Logout</button>
+      </div>
+    </header>
+
+    <div id="mainLayout">
+      <div class="row" style="margin-top:12px">
+        <!-- ENTRY -->
+        <div id="entryCard" class="card" style="flex:1;min-width:280px">
+          <div class="row" style="justify-content:space-between;align-items:center">
+            <b>Entry</b>
+            <label class="row" style="align-items:center;gap:6px">
+              <input type="checkbox" id="cntMode"><span class="hint">CNT (Count mode)</span>
+            </label>
+          </div>
+
+          <div id="weightBox" class="card" style="margin-top:10px">
+            <label for="pounds">Weight (lb)</label>
+            <input id="pounds" type="number" step="0.01" inputmode="decimal" min="0" value="0" enterkeyhint="done">
+            <div class="hint" id="weightPreview">$0.00</div>
+          </div>
+
+          <div id="countBox" class="card" style="margin-top:10px;display:none">
+            <label for="qty">Count (auto-CRV / special)</label>
+            <input id="qty" type="number" inputmode="numeric" pattern="[0-9]*" value="0" min="0" enterkeyhint="done">
+            <div class="hint" id="countPreview">$0.00</div>
+          </div>
+        </div>
+
+        <!-- ORDER -->
+        <div id="orderCard" class="card" style="flex:1;min-width:280px">
+          <h3 style="margin:0 0 6px">Current Order</h3>
+          <div class="hint" id="chosenMatLabel" style="margin:4px 0 8px">Material: —</div>
+          <table id="orderTable">
+            <thead>
+              <tr><th>Item</th><th>Detail</th><th class="pricecell">Subtotal</th><th></th></tr>
+            </thead>
+            <tbody></tbody>
+            <tfoot>
+              <tr><td colspan="2">CRV total</td><td class="pricecell" id="crvTotal">$0.00</td><td></td></tr>
+              <tr><td colspan="2">Weight total</td><td class="pricecell" id="weightTotal">$0.00</td><td></td></tr>
+              <tr><td colspan="2">Grand total</td><td class="pricecell" id="grandTotal">$0.00</td><td></td></tr>
+            </tfoot>
+          </table>
+          <div class="sticky-bottom">
+            <div class="row" style="justify-content:space-between;gap:8px">
+              <button id="clearOrder" class="btn danger">Clear</button>
+              <div class="row" style="gap:8px">
+                <button id="printLast" class="btn" disabled>Receipt</button>
+                <button id="saveOrder" class="btn success">Save Order</button>
+              </div>
+            </div>
+            <p class="hint" id="saveHint"></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- MATERIALS -->
+      <div id="materialsCard" class="card" style="margin-top:12px">
+        <label style="display:block;margin-bottom:8px">Materials</label>
+        <div id="matGrid" class="grid"></div>
+        <div id="choicePanel" class="row" style="gap:10px;display:none;flex-wrap:wrap"></div>
+        <div class="hint" id="pickedHint">
+          Weight by default. Enter lbs first, then tap a material; grid hides and shows
+          CRV (left) / Non-CRV (right). If <b>CNT</b> is checked, enter quantity then tap
+          material to get &lt;24 (5¢) / ≥24 (10¢). <b>Bag-in-Box, Pouch, Carton = 25¢ each</b>.
+          Aluminum right button = $1.75/lb. <b>Non-CRV has no payout.</b>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <button id="editFab" class="fab" aria-label="Back to materials" title="Back to materials"><span>✎</span></button>
+
+  <!-- Prices Modal -->
+  <dialog id="pricesModal" style="border:0;padding:0;border-radius:16px;background:var(--card);color:var(--ink);width:min(720px,92vw)">
+    <div class="card" style="border:0">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <h3 style="margin:0">Edit Prices ($/lb)</h3>
+        <button class="btn" onclick="document.getElementById('pricesModal').close()">✕</button>
+      </div>
+      <div id="priceGrid" class="row" style="flex-direction:column"></div>
+      <div class="row" style="justify-content:space-between;margin-top:10px;align-items:center">
+        <span id="priceSyncState" class="pill">Prices: local</span>
+        <div>
+          <button class="btn primary" id="savePrices">Save</button>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Orders Modal -->
+  <dialog id="ordersModal" style="border:0;padding:0;border-radius:16px;background:var(--card);color:var(--ink);width:min(720px,96vw)">
+    <div class="card" style="border:0">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <h3 style="margin:0">Saved Orders</h3>
+        <button class="btn" onclick="document.getElementById('ordersModal').close()">✕</button>
+      </div>
+      <div id="ordersList"></div>
+    </div>
+  </dialog>
+
+  <!-- QR ONLY Modal -->
+  <dialog id="barcodeModal" style="border:0;padding:0;border-radius:16px;background:var(--card);color:var(--ink);width:min(560px,96vw)">
+    <div class="card" style="border:0">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <h3 style="margin:0">Order Code</h3>
+        <div class="row">
+          <button id="printBar" class="btn">Print</button>
+          <button class="btn" onclick="document.getElementById('barcodeModal').close()">✕</button>
+        </div>
+      </div>
+
+      <div style="width:100%;text-align:center;margin-top:10px">
+        <div style="
+          display:inline-block;
+          padding:18px;
+          border-radius:16px;
+          background:color-mix(in oklab, var(--bg2) 80%, #000 10%);
+          border:1px solid var(--border);
+        ">
+          <canvas
+            id="qrCanvas"
+            width="260"
+            height="260"
+            style="width:260px;height:260px;background:#020617;border-radius:12px"
+          ></canvas>
+        </div>
+      </div>
+
+      <div class="hint" id="barcodeHint" style="margin-top:8px;word-break:break-all;text-align:center"></div>
+    </div>
+  </dialog>
+
+  <!-- Scanner Modal -->
+  <dialog id="scanModal" style="border:0;padding:0;border-radius:16px;background:var(--card);color:var(--ink);width:min(720px,96vw)">
+    <div class="card" style="border:0">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <h3 style="margin:0">Scan Code</h3>
+        <button class="btn" onclick="stopScan();document.getElementById('scanModal').close()">✕</button>
+      </div>
+      <video id="video" playsinline style="width:100%;border-radius:12px;background:#000"></video>
+      <div class="row" style="justify-content:space-between;margin-top:6px">
+        <span class="pill" id="camState">Camera: idle</span>
+        <button id="startCam" class="btn primary">Start</button>
+      </div>
+      <div id="scanResult" class="hint" style="margin-top:8px">Point camera at QR.</div>
+      <div id="scanOrder" style="display:none"></div>
+    </div>
+  </dialog>
+</div>
+
+<script>
+/* ===== Helpers ===== */
+const $ = (q)=>document.querySelector(q);
+const on = (sel, evt, fn)=>{ const el=$(sel); if(el) el.addEventListener(evt, fn, {passive:true}); };
+const set = (sel, text)=>{ const el=$(sel); if(el) el.textContent = text; };
+const money = (n)=> (isNaN(n)?0:n).toLocaleString(undefined,{style:'currency',currency:'USD'});
+
+function setCloud(text){
+  set('#cloudStatus', text);
+  set('#cloudStatusAuth', text);
+}
+
+/* Theme */
+(function(){
+  const saved = localStorage.getItem('sr_theme')||'';
+  if(saved==='light') document.documentElement.setAttribute('data-theme','light');
+  on('#themeBtn','click', ()=>{
+    const isLight = document.documentElement.getAttribute('data-theme')==='light';
+    document.documentElement.setAttribute('data-theme', isLight?'':'light');
+    localStorage.setItem('sr_theme', isLight?'dark':'light');
+  });
+})();
+
+/* Storage */
+const ORDERS_KEY = 'sr_orders_v1';
+const PRICES_KEY = 'sr_prices';
+
+function loadOrders(){
+  try{ return JSON.parse(localStorage.getItem(ORDERS_KEY)||'[]'); }
+  catch(e){ console.warn('orders parse error',e); return []; }
+}
+function saveOrders(arr){
+  localStorage.setItem(ORDERS_KEY, JSON.stringify(arr.slice(0,100)));
+}
+
+/* Icons & materials */
+const icons={
+  can:`<svg viewBox='0 0 64 64' fill='none'><rect x='18' y='4' width='28' height='56' rx='6' stroke='#7dd3fc' stroke-width='3'/><rect x='22' y='10' width='20' height='44' rx='3' fill='#1a2744'/></svg>`,
+  bottle:`<svg viewBox='0 0 64 64' fill='none'><path d='M28 6h8v8a8 8 0 0 1 4 7v30a8 8 0 0 1-8 8h0a8 8 0 0 1-8-8V21a8 8 0 0 1 4-7V6z' stroke='#7dd3fc' stroke-width='3' fill='#1a2744'/></svg>`,
+  jug:`<svg viewBox='0 0 64 64' fill='none'><path d='M20 14h16l8 8v28a8 8 0 0 1-8 8H24a8 8 0 0 1-8-8V22a8 8 0 0 1 4-8z' stroke='#7dd3fc' stroke-width='3' fill='#1a2744'/><rect x='36' y='18' width='10' height='8' rx='2' stroke='#7dd3fc' stroke-width='3'/></svg>`,
+  glass:`<svg viewBox='0 0 64 64' fill='none'><path d='M16 6h32l-6 40a10 10 0 0 1-10 8h0a10 10 0 0 1-10-8L16 6z' stroke='#7dd3fc' stroke-width='3' fill='#1a2744'/></svg>`,
+  steel:`<svg viewBox='0 0 64 64' fill='none'><rect x='14' y='10' width='36' height='48' rx='6' stroke='#7dd3fc' stroke-width='3'/><path d='M18 22h28M18 30h28M18 38h28' stroke='#7dd3fc' stroke-width='2'/></svg>`,
+  cup:`<svg viewBox='0 0 64 64' fill='none'><path d='M14 10h36l-6 36a10 10 0 0 1-10 8h0a10 10 0 0 1-10-8L14 10z' stroke='#7dd3fc' stroke-width='3' fill='#1a2744'/></svg>`,
+  seven:`<svg viewBox='0 0 64 64' fill='none'><polygon points='8,12 56,12 28,56 12,56' stroke='#7dd3fc' stroke-width='3' fill='none'/><text x='28' y='40' fill='#7dd3fc' font-size='24' text-anchor='middle' font-family='monospace'>7</text></svg>`,
+  pouch:`<svg viewBox='0 0 64 64' fill='none'><path d='M20 10h24l6 10v28l-6 6H20l-6-6V20l6-10z' stroke='#7dd3fc' stroke-width='3' fill='#1a2744'/></svg>`,
+  baginbox:`<svg viewBox='0 0 64 64' fill='none'><rect x='10' y='12' width='44' height='40' rx='6' stroke='#7dd3fc' stroke-width='3' fill='none'/><circle cx='46' cy='44' r='6' stroke='#7dd3fc' stroke-width='3'/><path d='M44 44h4' stroke='#7dd3fc' stroke-width='3'/></svg>`,
+  carton:`<svg viewBox='0 0 64 64' fill='none'><path d='M22 12h20l6 10v28a6 6 0 0 1-6 6H22a6 6 0 0 1-6-6V22l6-10z' stroke='#7dd3fc' stroke-width='3' fill='#1a2744'/><path d='M42 12l6 10H22' stroke='#7dd3fc' stroke-width='2'/><path d='M44 18c6 2 8 2 10 2' stroke='#7dd3fc' stroke-width='2'/></svg>`
+};
+const materials={
+  ALUMINUM:{label:'Aluminum',unit:'lb',icon:icons.can},
+  GLASS:{label:'Glass',unit:'lb',icon:icons.glass},
+  PET1:{label:'#1 PET',unit:'lb',icon:icons.bottle},
+  HDPE2:{label:'#2 HDPE',unit:'lb',icon:icons.jug},
+  PVC3:{label:'#3 PVC',unit:'lb',icon:icons.bottle},
+  LDPE4:{label:'#4 LDPE',unit:'lb',icon:icons.bottle},
+  PP5:{label:'#5 PP',unit:'lb',icon:icons.cup},
+  PS6:{label:'#6 PS',unit:'lb',icon:icons.cup},
+  OTHER7:{label:'#7 Other Plastic',unit:'lb',icon:icons.seven},
+  BIMETAL:{label:'Bi-metal',unit:'lb',icon:icons.steel},
+  Pouch:{label:'Multi-Layer Pouch',unit:'lb',icon:icons.pouch},
+  BagInBox:{label:'Bag-in-Box (wine)',unit:'lb',icon:icons.baginbox},
+  JuiceBox:{label:'Paperboard Carton (BeatBox)',unit:'ea',icon:icons.carton}
+};
+
+let prices = JSON.parse(localStorage.getItem(PRICES_KEY)||'null') || {
+  ALUMINUM:1.65,
+  GLASS:0.102,
+  PET1:1.47,
+  HDPE2:0.63,
+  PVC3:0.48,
+  LDPE4:0.98,
+  PP5:0.55,
+  PS6:0.31,
+  OTHER7:0.41,
+  BIMETAL:0.825,
+  Pouch:0.41,
+  BagInBox:3.79,
+  JuiceBox_each:0.25
+};
+
+let selectedMat=null;
+const order=[];
+
+/* Build material grid */
+(function(){
+  const g=$('#matGrid');
+  g.innerHTML='';
+  Object.entries(materials).forEach(([k,v])=>{
+    const b=document.createElement('button');
+    b.className='mat-btn';
+    b.innerHTML=`${v.icon}<span>${v.label}</span>`;
+    b.addEventListener('click',()=>onMaterial(k));
+    g.appendChild(b);
+  });
+})();
+
+/* CNT vs weight */
+function isCount(){ return $('#cntMode')?.checked; }
+function updatePanels(){
+  $('#countBox').style.display=isCount()?'block':'none';
+  $('#weightBox').style.display=isCount()?'none':'block';
+}
+on('#cntMode','change',()=>{ updatePanels(); restoreGrid(); });
+updatePanels();
+
+/* Input helpers */
+function autoPrep(sel){ const el=$(sel); if(!el) return; if(el.value==='0'||el.value==='0.00') el.value=''; el.select?.(); }
+function autoRestore(sel){ const el=$(sel); if(!el) return; if(!el.value) el.value='0'; }
+['#pounds','#qty'].forEach(id=>{
+  on(id,'focus', ()=>autoPrep(id));
+  on(id,'blur',  ()=>autoRestore(id));
+});
+on('#editFab','click', ()=>{ restoreGrid(); window.scrollTo({top:document.getElementById('materialsCard').offsetTop-20, behavior:'smooth'}); });
+
+/* Material flow */
+function onMaterial(key){
+  selectedMat=key;
+  set('#chosenMatLabel','Material: '+materials[key].label);
+
+  const p = $('#choicePanel'); p.innerHTML='';
+  const grid = $('#matGrid');
+
+  const showPanel = ()=>{
+    grid.style.display='none';
+    p.style.display='flex';
+    $('#editFab').style.display = 'flex';
+  };
+
+  if(isCount()){
+    const qty=+($('#qty')?.value||0);
+    if(!qty){ flashHint('Enter count first'); return; }
+    showPanel();
+    if(key==='BagInBox' || key==='Pouch' || key==='JuiceBox'){
+      p.append(makeBtn('25¢ each',()=>{addCountItem(0.25);}));  
+    }else{
+      p.append(
+        makeBtn('< 24 oz (5¢)', ()=>{addCountItem(0.05);} ),
+        makeBtn('≥ 24 oz (10¢)',()=>{addCountItem(0.10);} )
+      );
+    }
+  }else{
+    const lbs=+($('#pounds')?.value||0);
+    if(!lbs){ flashHint('Enter weight first'); return; }
+    showPanel();
+    p.append(
+      makeBtn('CRV',()=>{addWeightItem('CRV'); restoreGrid();} ),
+      makeBtn(key==='ALUMINUM'?'$1.75/lb':'Non-CRV',()=>{addWeightItem(key==='ALUMINUM'?'ALU175':'NON'); restoreGrid();} )
+    );
+  }
+}
+function makeBtn(txt,fn){ const b=document.createElement('button'); b.className='btn primary'; b.textContent=txt; b.addEventListener('click',fn); return b; }
+function restoreGrid(){
+  const p=$('#choicePanel'); if(p) p.style.display='none';
+  const g=$('#matGrid'); if(g) g.style.display='grid';
+  set('#chosenMatLabel','Material: —');
+  selectedMat=null;
+  $('#editFab').style.display='none';
+}
+function flashHint(msg){
+  const el = $('#pickedHint');
+  if(!el) return;
+  const prev=el.textContent;
+  el.textContent=msg;
+  setTimeout(()=>el.textContent=prev,1200);
+}
+
+/* Previews */
+on('#pounds','input', ()=>{
+  const lbs=+($('#pounds')?.value||0);
+  const rate=(selectedMat && prices[selectedMat])||0;
+  set('#weightPreview', money(lbs*rate));
+});
+on('#qty','input',    ()=>{
+  const qty=+($('#qty')?.value||0);
+  set('#countPreview', money(qty*0.05));
+});
+
+/* Add items */
+function addWeightItem(kind){
+  if(!selectedMat){ alert('Pick a material below.'); return;}
+  const lbs = +($('#pounds')?.value||0);
+  if(!lbs) return;
+
+  let rate=(prices[selectedMat]||0);
+  let tag='', subtotal=0;
+
+  if(selectedMat==='ALUMINUM' && kind==='ALU175'){
+    rate=1.75; tag='Alu $1.75'; subtotal=lbs*rate;
+  }else if(kind==='CRV'){
+    tag='CRV'; subtotal=lbs*rate;
+  }else{
+    tag='Non-CRV (no payout)'; subtotal=0;
+  }
+
+  order.push({
+    type:'weight', mat:selectedMat, lbs, unitPrice:rate, payoutKind:kind,
+    subtotal,
+    detail:`${tag} · ${lbs.toFixed(2)} lb × ${money(rate)}/lb${subtotal===0?' — no payout':''}`
+  });
+
+  $('#pounds').value='0';
+  render();
+}
+function addCountItem(per){
+  if(!selectedMat){ alert('Pick a material below.'); return;}
+  const qty = +($('#qty')?.value||0);
+  if(!qty) return;
+  order.push({
+    type:'crv',mat:selectedMat,qty,unitPrice:per,
+    subtotal:qty*per,
+    detail:`${qty} × ${(per===0.25?'25¢':per===0.10?'10¢':'5¢')}`
+  });
+  $('#qty').value='0';
+  // auto exit CNT mode after one use
+  const cnt = $('#cntMode');
+  if(cnt){ cnt.checked=false; updatePanels(); }
+  restoreGrid();
+  render();
+}
+
+/* Render order */
+function render(){
+  const tb=$('#orderTable tbody');
+  tb.innerHTML='';
+  let crv=0,wt=0;
+  order.forEach((it,i)=>{
+    const nm=(materials[it.mat]||{label:it.mat}).label;
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${nm}</td><td>${it.detail}</td><td class="pricecell">${money(it.subtotal)}</td><td><button class='btn' data-i='${i}'>✕</button></td>`;
+    tb.appendChild(tr);
+    if(it.type==='weight') wt+=it.subtotal; else crv+=it.subtotal;
+  });
+  set('#crvTotal', money(crv));
+  set('#weightTotal', money(wt));
+  set('#grandTotal', money(crv+wt));
+  tb.querySelectorAll('button[data-i]').forEach(b=>b.addEventListener('click',()=>{order.splice(+b.dataset.i,1); render();}));
+  $('#printLast').disabled = order.length===0;
+}
+
+/* Clear with double-confirm */
+let clearConfirm=false;
+on('#clearOrder','click',()=>{
+  if(!order.length) return;
+  const btn = $('#clearOrder');
+  if(!clearConfirm){
+    clearConfirm=true;
+    const prevText = btn.textContent;
+    btn.dataset.prev = prevText;
+    btn.textContent = 'Confirm';
+    set('#saveHint','Tap Clear again to confirm.');
+    setTimeout(()=>{
+      if(clearConfirm){
+        clearConfirm=false;
+        btn.textContent = btn.dataset.prev || 'Clear';
+        set('#saveHint','');
+      }
+    },2000);
+    return;
+  }
+  clearConfirm=false;
+  btn.textContent = btn.dataset.prev || 'Clear';
+  set('#saveHint','');
+  order.splice(0,order.length);
+  render();
+});
+
+/* Totals helper */
+function currentTotals(){
+  return {
+    crv:   $('#crvTotal').textContent || '$0.00',
+    weight:$('#weightTotal').textContent || '$0.00',
+    grand: $('#grandTotal').textContent || '$0.00',
+  };
+}
+
+/* Orders + Save Order (local first, then cloud) */
+let __lastSavedOrder = null;
+
+async function saveOrderCommon(){
+  const hintSel = '#saveHint';
+  set(hintSel, '');
+
+  if(!order.length){
+    set(hintSel, 'Add some items first.');
+    return;
+  }
+
+  const payload = {
+    id: 'SR-' + Date.now(),
+    when: new Date().toISOString(),
+    items: [...order],
+    totals: currentTotals()
+  };
+
+  // 1) Always save locally
+  try{
+    const localAll = loadOrders();
+    localAll.unshift(payload);
+    saveOrders(localAll);
+  }catch(e){
+    console.error('Local save error', e);
+    alert('Local save failed: ' + (e.message || e));
+    return;
+  }
+
+  __lastSavedOrder = payload;
+
+  // 2) Clear current order UI
+  order.splice(0, order.length);
+  render();
+
+  // 3) Base message
+  set(hintSel, 'Saved locally ✔');
+
+  // 4) Try cloud if logged in
+  if(window.firebaseReady && window.cloud && window.auth && window.auth.currentUser){
+    try{
+      await window.cloud.saveOrder(payload);
+      set(hintSel, 'Saved (cloud + local) ✔');
+    }catch(e){
+      console.error('Cloud save failed', e);
+      set(hintSel, 'Saved locally (cloud error)');
+    }
+  }
+
+  if('vibrate' in navigator) navigator.vibrate?.(10);
+
+  setTimeout(()=>set(hintSel,''), 2000);
+}
+on('#saveOrder', saveOrderCommon);
+
+on('#printLast', ()=>{ if(__lastSavedOrder) printReceipt(__lastSavedOrder); else alert('Save an order first.'); });
+
+/* Prices */
+on('#openPrices','click', ()=>{ buildPricesForm(); $('#pricesModal').showModal(); });
+function buildPricesForm(){
+  const grid=$('#priceGrid'); grid.innerHTML='';
+  Object.keys(materials).forEach(k=>{
+    if(materials[k].unit==='ea') return;
+    const row=document.createElement('div'); row.className='row'; row.style.flexDirection='column';
+    row.innerHTML=`<label>${materials[k].label}</label><input type='number' step='0.001' id='p_${k}' value='${prices[k]??''}' placeholder='$/lb'>`;
+    grid.appendChild(row);
+  });
+  const jb=document.createElement('div'); jb.className='row'; jb.style.flexDirection='column';
+  jb.innerHTML=`<label>Paperboard Carton (BeatBox) – price each</label><input type='number' step='0.01' id='p_JuiceBox_each' value='${prices.JuiceBox_each??0.25}' placeholder='$/ea'>`;
+  grid.appendChild(jb);
+}
+on('#savePrices','click', async ()=>{
+  const next={};
+  Object.keys(materials).forEach(k=>{
+    if(materials[k].unit==='lb'){
+      const el=$('#p_'+k);
+      next[k]=+(el && el.value ? el.value : 0) || 0;
+    }
+  });
+  const jb=$('#p_JuiceBox_each');
+  next.JuiceBox_each=+(jb && jb.value ? jb.value : 0.25) || 0.25;
+  prices={...prices,...next};
+  localStorage.setItem(PRICES_KEY,JSON.stringify(prices));
+
+  try{
+    if(window.firebaseReady && window.cloud && window.auth && window.auth.currentUser){
+      await window.cloud.setPrices(prices);
+      set('#priceSyncState','Prices synced to cloud');
+    }else{
+      set('#priceSyncState','Prices saved locally (not logged in)');
+    }
+  }catch(e){
+    set('#priceSyncState','Prices saved locally (cloud failed)');
+  }
+  document.getElementById('pricesModal').close();
+});
+
+/* Merge local + cloud orders */
+function mergeOrders(localArr, cloudArr){
+  const byId={};
+  (localArr||[]).forEach(o=>{ if(o && o.id) byId[o.id]=o; });
+  (cloudArr||[]).forEach(o=>{ if(o && o.id) byId[o.id]=o; });
+  return Object.values(byId).sort((a,b)=>{
+    return new Date(b.when||0) - new Date(a.when||0);
+  });
+}
+
+/* Orders modal */
+on('#viewOrders','click', async ()=>{
+  const list=$('#ordersList'); list.innerHTML='';
+  let all = loadOrders();
+  try{
+    if(window.firebaseReady && window.cloud && window.auth && window.auth.currentUser){
+      const fromCloud = await window.cloud.listOrders();
+      if(fromCloud && fromCloud.length){
+        all = mergeOrders(all, fromCloud);
+        saveOrders(all);
+      }
+    }
+  }catch(e){
+    console.warn('orders cloud list failed',e);
+  }
+
+  if(!all || !all.length){
+    list.innerHTML='<div class="hint">No orders yet.</div>';
+    document.getElementById('ordersModal').showModal(); return;
+  }
+  all.forEach(o=>{
+    const div=document.createElement('div'); div.className='card';
+    const header=document.createElement('div'); header.className='row'; header.style.justifyContent='space-between'; header.style.alignItems='center';
+    const left=document.createElement('b'); left.textContent=o.id || '(no id)';
+
+    const codeBtn=document.createElement('button'); codeBtn.className='btn primary'; codeBtn.textContent='Code';
+    codeBtn.addEventListener('click',()=>showBarcode(o.id || o._id || ''));
+
+    const rbtn=document.createElement('button'); rbtn.className='btn'; rbtn.textContent='Receipt';
+    rbtn.style.marginLeft='6px';
+    rbtn.addEventListener('click',()=>printReceipt(o));
+
+    const right=document.createElement('span'); right.className='hint'; right.textContent=new Date(o.when||Date.now()).toLocaleString();
+    header.append(left,codeBtn,rbtn,right);
+
+    const ul=document.createElement('ul');
+    ul.innerHTML=(o.items||[]).map(it=>`<li>${(materials[it.mat]||{label:it.mat}).label} — ${it.detail} <b>${money(it.subtotal)}</b></li>`).join('');
+    const totals=document.createElement('div'); totals.className='row'; totals.style.justifyContent='flex-end'; totals.style.gap='16px';
+    totals.innerHTML=`<span>CRV: <b>${o.totals?.crv||'$0.00'}</b></span><span>Weight: <b>${o.totals?.weight||'$0.00'}</b></span><span>Grand: <b>${o.totals?.grand||'$0.00'}</b></span>`;
+    div.append(header,ul,totals); list.appendChild(div);
+  });
+  document.getElementById('ordersModal').showModal();
+});
+
+/* QR-only code */
+function qrColors(){
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  return isLight
+    ? { dark:'#111111', light:'#f3f4f6' }
+    : { dark:'#e5efff', light:'#020617' };
+}
+function showBarcode(text){
+  const value = text && String(text).trim() ? String(text).trim() : 'NO-ID';
+  set('#barcodeHint', value);
+
+  const canvas = $('#qrCanvas');
+  const colors = qrColors();
+
+  try{
+    QRCode.toCanvas(canvas, value, {
+      width: 260,
+      margin: 2,
+      color: {
+        dark: colors.dark,
+        light: colors.light
+      }
+    }, function(err){
+      if(err) console.error('QR error', err);
+    });
+  }catch(e){
+    console.error('QR lib error', e);
+  }
+
+  document.getElementById('barcodeModal').showModal();
+}
+on('#printBar','click', ()=>{
+  const canvas = $('#qrCanvas');
+  if(!canvas) return;
+  const data = canvas.toDataURL('image/png');
+  const w = window.open('','printqr');
+  const html = `
+    <!doctype html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Order Code</title>
+        <style>
+          body{margin:0;padding:20px;text-align:center;background:#fff}
+          img{max-width:260px;width:100%}
+        </style>
+      </head>
+      <body>
+        <img src="${data}">
+        <script>
+          window.onload = function(){
+            setTimeout(function(){
+              window.print();
+              setTimeout(function(){ window.close(); }, 300);
+            }, 200);
+          };
+        <\/script>
+      </body>
+    </html>
+  `;
+  w.document.write(html);
+  w.document.close();
+});
+
+/* Scanner */
+let stream=null, codeReader=null;
+const scanModalEl = document.getElementById('scanModal');
+if(scanModalEl){
+  scanModalEl.addEventListener('close', stopScan, {passive:true});
+  scanModalEl.addEventListener('cancel', stopScan, {passive:true});
+}
+on('#scanBtn','click', ()=>{
+  $('#scanOrder').style.display='none';
+  set('#scanResult','Point camera at QR.');
+  document.getElementById('scanModal').showModal();
+});
+async function startScan(){
+  try{
+    if(!navigator.mediaDevices?.getUserMedia){
+      set('#camState','Camera: unsupported');
+      return;
+    }
+    const constraints = { video: { facingMode: { ideal: 'environment' } } };
+    set('#camState','Camera: starting…');
+    stream = await navigator.mediaDevices.getUserMedia(constraints);
+    const v=$('#video'); v.srcObject=stream; await v.play();
+    set('#camState','Camera: on ✔');
+    codeReader = new ZXing.BrowserMultiFormatReader();
+    await codeReader.decodeFromVideoDevice(null, v, async (result, err)=>{
+      if(result){
+        const val = result.getText ? result.getText() : (result.text || '');
+        if(val){ await onScan(val); }
+      }
+    });
+  }catch(e){ set('#camState','Camera: error'); alert(e.message||e); }
+}
+function stopScan(){
+  try{
+    if(codeReader){ codeReader.reset(); codeReader=null; }
+    if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+    set('#camState','Camera: idle');
+  }catch(e){}
+}
+on('#startCam','click', ()=>{ if(stream){ stopScan(); } else { startScan(); } });
+
+async function onScan(val){
+  if(!val) return;
+  stopScan();
+  set('#scanResult','Scanned: '+val);
+  let o=null;
+  try{
+    if(window.firebaseReady && window.cloud && window.auth && window.auth.currentUser){
+      o = await window.cloud.getOrder(val);
+    }
+  }catch(e){}
+  if(!o){
+    const all = loadOrders();
+    o = all.find(x=>x.id===val) || null;
+  }
+  const panel = $('#scanOrder');
+  if(o){
+    const rows=(o.items||[]).map(it=>`<li>${(materials[it.mat]||{label:it.mat}).label} — ${it.detail} <b>${money(it.subtotal)}</b></li>`).join('');
+    panel.style.display='block';
+    panel.innerHTML=`<h3 style='margin:10px 0'>${o.id}</h3>
+      <div class='hint'>${new Date(o.when||Date.now()).toLocaleString()}</div>
+      <ul>${rows}</ul>
+      <div class='row' style='justify-content:flex-end;gap:16px'>
+        <span>CRV: <b>${o.totals?.crv||'$0.00'}</b></span>
+        <span>Weight: <b>${o.totals?.weight||'$0.00'}</b></span>
+        <span>Grand: <b>${o.totals?.grand||'$0.00'}</b></span>
+      </div>
+      <div class='row' style='justify-content:center;margin-top:10px'>
+        <button class='btn primary' onclick='(${startScan.toString()})();'>Scan Again</button>
+      </div>`;
+  } else {
+    panel.style.display='block';
+    panel.innerHTML = "<div class='hint'>No matching order found (cloud/local).</div>";
+  }
+}
+
+/* Receipt printing */
+function buildReceiptHTML(order){
+  const items = (order.items||[]);
+  const lines = items.map(it=>{
+    const name=(materials[it.mat]||{label:it.mat}).label;
+    const noPay = (it.type==='weight' && (it.payoutKind==='NON' || (typeof it.subtotal==='number' && it.subtotal===0)));
+    return `<tr><td>${name}</td><td>${it.detail}${noPay?'':' '}</td></tr>`;
+  }).join('');
+
+  const lbsTotal = items.filter(it=>it.type==='weight').reduce((a,b)=>a+(+b.lbs||0),0);
+  const lbsNoPay = items
+    .filter(it=>it.type==='weight' && (it.payoutKind==='NON' || (typeof it.subtotal==='number' && it.subtotal===0)))
+    .reduce((a,b)=>a+(+b.lbs||0),0);
+  const cntCRV  = items.filter(it=>it.type==='crv').reduce((a,b)=>a+(+b.qty||0),0);
+
+  const grand = order.totals?.grand || '$0.00';
+  const when  = new Date(order.when||Date.now()).toLocaleString();
+  const id    = order.id || 'UNSAVED';
+
+  return `<!doctype html><html><head><meta charset="utf-8"><title>Receipt ${id}</title>
+  <style>@media print{@page{margin:8mm}body{margin:0}}body{font-family:ui-monospace,Menlo,Consolas,monospace;color:#111;padding:12px;line-height:1.25}
+  .center{text-align:center}.small{font-size:12px;color:#333}table{width:100%;border-collapse:collapse;margin-top:6px}
+  th,td{padding:4px 0;border-bottom:1px dashed #ccc;font-size:14px}thead th{border-bottom:1px solid #000}
+  .logo{font-weight:700;letter-spacing:.5px;font-size:16px}.muted{color:#666}
+  .box{border:1px dashed #bbb;padding:6px;border-radius:8px;margin-top:8px}</style>
+  </head><body>
+    <div class="center logo">Recycling Receipt</div>
+    <div class="center small">${when}</div>
+    <div class="small">Order ID: <b>${id}</b></div>
+
+    <table>
+      <thead><tr><th style="text-align:left">Item</th><th style="text-align:left">Detail</th></tr></thead>
+      <tbody>${lines || '<tr><td colspan="2" class="muted">No items</td></tr>'}</tbody>
+      <tfoot>
+        <tr><td colspan="2" style="text-align:right;font-size:16px">GRAND TOTAL: <span style="display:inline-block;min-width:96px">${grand}</span></td></tr>
+      </tfoot>
+    </table>
+
+    <div class="box">
+      <div class="small">Summary</div>
+      <div class="small">Weight received: <b>${lbsTotal.toFixed(2)} lb</b> &nbsp; | &nbsp; Non-CRV (no payout): <b>${lbsNoPay.toFixed(2)} lb</b> &nbsp; | &nbsp; CRV containers: <b>${cntCRV}</b></div>
+      <div class="small muted">Non-CRV materials are accepted but do not pay out. Thanks for keeping recyclables out of landfill!</div>
+    </div>
+
+    <script>
+      window.onload = function(){
+        setTimeout(function(){
+          window.print();
+          setTimeout(function(){ window.close(); }, 300);
+        }, 200);
+      };
+    <\/script>
+  </body></html>`;
+}
+function printReceipt(order){
+  if(!order){ alert('No order to print'); return; }
+  const w=window.open('','receipt');
+  w.document.write(buildReceiptHTML(order));
+  w.document.close();
+}
+
+/* ===== Firebase (Auth + Firestore) ===== */
+window.cloud = null;
+window.firebaseReady = false;
+window.auth = null;
+
+const fbCfg = {
+  apiKey: "AIzaSyCSRYYjuJyO6_N2n9RaA8T2fXRaHiC3q6o",
+  authDomain: "recycle-cb24b.firebaseapp.com",
+  projectId: "recycle-cb24b",
+  storageBucket: "recycle-cb24b.firebasestorage.app",
+  messagingSenderId: "281209650356",
+  appId: "1:281209650356:web:a3b55a3b4d7ce5e642abe1",
+  measurementId: "G-4DFFS1RH83"
+};
+
+(function initFirebase(){
+  if (typeof firebase === 'undefined') {
+    setCloud('Cloud: unavailable (local only)');
+    // If firebase totally missing, still let app run in local mode
+    $('#authScreen').classList.add('hidden');
+    $('#appShell').classList.remove('hidden');
+    return;
+  }
+  try {
+    const app = firebase.initializeApp(fbCfg);
+    const db  = firebase.firestore();
+    const auth = firebase.auth();
+    window.auth = auth;
+
+    db.enablePersistence({synchronizeTabs:true}).catch(()=>{});
+
+    window.cloud = {
+      async saveOrder(o){ return db.collection('orders').doc(o.id).set(o); },
+      async getOrder(id){
+        const s = await db.collection('orders').doc(id).get();
+        if(!s.exists) return null;
+        const data = s.data() || {};
+        return { id: data.id || s.id, ...data };
+      },
+      async listOrders(){
+        const s = await db.collection('orders')
+          .orderBy('when','desc')
+          .limit(100)
+          .get();
+        return s.docs.map(d => {
+          const data = d.data() || {};
+          return { id: data.id || d.id, ...data };
+        });
+      },
+      async getPrices(){
+        const s = await db.collection('settings').doc('prices').get();
+        return s.exists ? s.data() : null;
+      },
+      async setPrices(map){
+        return db.collection('settings').doc('prices').set({
+          map,
+          updatedAt: new Date().toISOString()
+        });
+      }
+    };
+
+    window.firebaseReady = true;
+    setCloud('Cloud: ready (sign in)');
+
+    auth.onAuthStateChanged((user)=>{
+      if(user){
+        setCloud('Cloud: online (admin)');
+        $('#authScreen').classList.add('hidden');
+        $('#appShell').classList.remove('hidden');
+      }else{
+        setCloud('Cloud: ready (sign in)');
+        $('#appShell').classList.add('hidden');
+        $('#authScreen').classList.remove('hidden');
+      }
+    });
+  } catch (e) {
+    console.error('Firebase init error', e);
+    setCloud('Cloud: error (local only)');
+    // let app still run
+    $('#authScreen').classList.add('hidden');
+    $('#appShell').classList.remove('hidden');
+  }
+})();
+
+/* Auth UI */
+on('#authLogin','click', async ()=>{
+  if(!window.auth){ set('#authHint','Auth not ready'); return; }
+  const email = $('#authEmail')?.value.trim();
+  const pass  = $('#authPass')?.value.trim();
+  if(!email || !pass){
+    set('#authHint','Enter email and password.');
+    return;
+  }
+  try{
+    set('#authHint','Signing in…');
+    await window.auth.signInWithEmailAndPassword(email,pass);
+    set('#authHint','Signed in ✔');
+  }catch(e){
+    console.error(e);
+    set('#authHint','Login failed. Check your email or password.');
+  }
+});
+on('#logoutBtn','click', async ()=>{
+  try{ await window.auth.signOut(); }catch(e){}
+});
+</script>
+</body>
+</html>
