@@ -28,30 +28,89 @@
   .hidden{display:none!important}
   .row{display:flex; gap:10px; flex-wrap:wrap}
   .pill{background:color-mix(in oklab, var(--card) 70%, #0f1a2d); border:1px solid var(--border); border-radius:999px; padding:6px 10px; white-space:nowrap}
-  .btn{padding:12px 16px; cursor:pointer; transition:transform .06s ease, filter .2s ease; font:inherit; border-radius:12px; border:1px solid var(--border); background:color-mix(in oklab, var(--card) 90%, #0e1b30 14%); color:var(--ink)}
+  .btn{
+    padding:12px 16px; cursor:pointer;
+    transition:transform .06s ease, filter .2s ease, background .15s ease, border-color .15s ease;
+    font:inherit; border-radius:12px; border:1px solid var(--border);
+    background:color-mix(in oklab, var(--card) 90%, #0e1b30 14%); color:var(--ink)
+  }
   .btn:active{transform:translateY(1px)}
   .btn.primary{background:color-mix(in oklab, var(--accent) 14%, var(--card)); border-color:var(--border)}
   .btn.success{background:var(--ok); border-color:#16a34a; color:#05210f}
   .btn.danger{background:var(--danger); border-color:#b91c1c}
   .btn[disabled]{opacity:.6; cursor:not-allowed}
-  input{font:inherit; border-radius:12px; border:1px solid var(--border); background:color-mix(in oklab, var(--card) 92%, #0e1b30 14%); color:var(--ink); padding:12px}
+  input{
+    font:inherit; border-radius:12px; border:1px solid var(--border);
+    background:color-mix(in oklab, var(--card) 92%, #0e1b30 14%);
+    color:var(--ink); padding:12px
+  }
   input[type=number]{text-align:center}
-  .wrap{max-width:1040px; margin:0 auto; padding:14px; display:none}
-  header{display:flex; gap:10px; align-items:center; justify-content:space-between}
+  .wrap{
+    max-width:1040px; margin:0 auto; padding:14px;
+    display:none;
+  }
+  header{
+    display:flex; gap:10px; align-items:center; justify-content:space-between;
+    position:sticky; top:0;
+    z-index:10;
+    padding:8px 0 10px;
+    background:linear-gradient(180deg, color-mix(in oklab,var(--bg2) 88%, #000 6%), transparent);
+    backdrop-filter: blur(8px);
+  }
   .badge{font-size:.72rem; color:var(--bg2); background:var(--accent); padding:4px 8px; border-radius:999px; font-weight:700}
   .card{background:var(--card); border:1px solid var(--border); border-radius:16px; padding:12px}
   table{width:100%; border-collapse:collapse}
-  th,td{padding:10px; border-bottom:1px solid var(--border); text-align:left}
+  th,td{padding:10px; border-bottom:1px solid var(--border); text-align:left; font-size:.92rem}
+  tfoot tr:last-child td{
+    font-weight:700;
+    border-top:1px solid var(--border);
+    font-size:1rem;
+  }
   .pricecell{white-space:nowrap}
   .sticky-bottom{margin-top:8px; border-top:1px solid var(--border); padding-top:8px}
   .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:10px}
-  .mat-btn{display:flex; flex-direction:column; gap:6px; align-items:center; justify-content:center; background:color-mix(in oklab, var(--card) 92%, #0e1b3020); border:1px solid var(--border); border-radius:14px; padding:10px; min-height:104px; transition:transform .08s ease, box-shadow .2s ease}
+  .mat-btn{
+    display:flex; flex-direction:column; gap:6px; align-items:center; justify-content:center;
+    background:color-mix(in oklab, var(--card) 92%, #0e1b3020);
+    border:1px solid var(--border); border-radius:14px;
+    padding:10px; min-height:104px;
+    transition:transform .08s ease, box-shadow .2s ease, border-color .12s ease, background .12s ease;
+  }
   .mat-btn:hover{transform:translateY(-2px); box-shadow:0 8px 20px rgba(0,0,0,.15)}
   .mat-btn svg{width:40px; height:40px}
   .mat-btn span{font-size:.8rem; text-align:center}
+  .mat-btn--selected{
+    border-color:color-mix(in oklab,var(--accent) 70%, #ffffff);
+    box-shadow:0 0 0 1px color-mix(in oklab,var(--accent) 40%, transparent), 0 8px 24px rgba(0,0,0,.35);
+    background:color-mix(in oklab, var(--card) 78%, var(--accent) 8%);
+    transform:translateY(-1px);
+  }
   .hint{color:var(--muted); font-size:.9rem; min-height:1.1em}
+  .hint.error{color:var(--danger)}
+  .btn-ghost-danger{
+    border-color:transparent;
+    background:transparent;
+    color:var(--danger);
+    padding:6px 10px;
+    font-size:.82rem;
+  }
+  .btn-ghost-danger:hover{
+    background:color-mix(in oklab,var(--danger) 12%, transparent);
+    border-color:color-mix(in oklab,var(--danger) 40%, transparent);
+  }
+  .pulse{
+    animation:pulseTotal .28s ease-out;
+  }
+  @keyframes pulseTotal{
+    0%{transform:scale(1); text-shadow:none;}
+    40%{transform:scale(1.04); text-shadow:0 0 6px color-mix(in oklab,var(--accent) 60%, #ffffff);}
+    100%{transform:scale(1); text-shadow:none;}
+  }
   @media (max-width:720px){
     header{flex-direction:column; align-items:flex-start}
+  }
+  @media (max-width:480px){
+    .mat-btn{min-height:128px}
   }
 
   /* Full-screen auth overlay */
@@ -88,16 +147,16 @@
     <div class="row" style="align-items:center;justify-content:space-between;margin-bottom:6px">
       <div class="row" style="align-items:center;gap:8px">
         <span style="width:12px;height:12px;border-radius:999px;background:var(--accent);box-shadow:0 0 16px color-mix(in oklab,var(--accent) 60%,white);"></span>
-        <h2 style="margin:0;font-size:1.5rem">Login</h2>
+        <h2 style="margin:0;font-size:1.5rem">Recycling POS</h2>
       </div>
     </div>
-    <p class="hint" style="margin-bottom:10px">Sign in to access orders &amp; scanning.</p>
+    <p class="hint" style="margin:0 0 10px">Staff login. Only authorized staff may sign in.</p>
     <div class="row" style="flex-direction:column;gap:8px">
       <label>Email</label>
       <input id="loginEmail" placeholder="example@gmail.com" autocomplete="username" />
       <label>Password</label>
       <input id="loginPass" type="password" placeholder="••••••" autocomplete="current-password" />
-      <div class="row" style="justify-content:space-between;align-items:center">
+      <div class="row" style="justify-content:space-between;align-items:center;margin-top:4px">
         <span id="loginHint" class="hint">Use your staff account.</span>
         <button id="loginBtn" class="btn success">Sign in</button>
       </div>
@@ -161,7 +220,7 @@
           <button id="clearOrder" class="btn danger">Clear</button>
           <div class="row" style="gap:8px">
             <button id="printLast" class="btn" disabled>Receipt</button>
-            <button id="saveOrder" class="btn success">Save Order</button>
+            <button id="saveOrder" class="btn success" disabled>Save Order</button>
           </div>
         </div>
         <p class="hint" id="saveHint"></p>
@@ -175,7 +234,7 @@
     <div id="matGrid" class="grid"></div>
     <div id="choicePanel" class="row" style="gap:10px;display:none;flex-wrap:wrap"></div>
     <div class="hint" id="pickedHint" style="margin-top:8px">
-      Tip: enter weight or count, then tap a material. CNT = count mode. Aluminum right button = $1.75/lb. Non-CRV items pay $0.
+      Non-CRV pays $0. Aluminum right button = $1.75/lb.
     </div>
   </div>
 </div>
@@ -206,7 +265,7 @@
       <button class="btn" onclick="barcodeModal.close()">✕</button>
     </div>
     <div style="display:flex;justify-content:center;margin-top:10px">
-      <div style="background:#ffffff;padding:10px 14px;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.35);max-width:360px;width:100%">
+      <div style="background:#ffffff;padding:10px 14px;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.55);max-width:360px;width:100%">
         <svg id="barcodeSVG" style="width:100%;height:120px"></svg>
       </div>
     </div>
@@ -221,6 +280,7 @@
       <h3 style="margin:0">Saved Orders</h3>
       <button class="btn" onclick="ordersModal.close()">✕</button>
     </div>
+    <div class="hint" style="margin-top:4px;margin-bottom:4px">Most recent orders. Tap Barcode to reprint tag.</div>
     <div id="ordersList"></div>
   </div>
 </dialog>
@@ -248,6 +308,14 @@ const $ = (q)=>document.querySelector(q);
 const on = (sel, evt, fn)=>{ const el=$(sel); if(el) el.addEventListener(evt, fn); };
 const money = (n)=> (isNaN(n)?0:n).toLocaleString(undefined,{style:'currency',currency:'USD'});
 function setCloud(text){ $('#cloudStatus').textContent = text; }
+
+/* Simple click lock (avoid accidental double taps) */
+function lockClick(btn, fn, ms=300){
+  if(!btn) return;
+  if(btn.__locked) return;
+  btn.__locked = true;
+  Promise.resolve(fn()).finally(()=>{ setTimeout(()=>{ btn.__locked=false; }, ms); });
+}
 
 /* Theme toggle */
 (function(){
@@ -301,6 +369,7 @@ let prices = {
   Object.entries(materials).forEach(([k,v])=>{
     const b=document.createElement('button');
     b.className='mat-btn';
+    b.dataset.matKey=k;
     b.innerHTML=`${v.icon}<span>${v.label}</span>`;
     b.addEventListener('click',()=>onMaterial(k));
     g.appendChild(b);
@@ -312,8 +381,13 @@ function isCountMode(){ return $('#cntMode').checked; }
 function updateModeUI(){
   $('#countBox').style.display = isCountMode() ? 'block' : 'none';
   $('#weightBox').style.display = isCountMode() ? 'none' : 'block';
+  if(isCountMode()){
+    $('#qty').focus();
+  }else{
+    $('#pounds').focus();
+  }
 }
-on('#cntMode','change', updateModeUI);
+on('#cntMode','change', ()=>updateModeUI());
 updateModeUI();
 
 /* Entry previews */
@@ -327,15 +401,40 @@ on('#qty','input', ()=>{
   $('#countPreview').textContent = money(qty*0.05);
 });
 
+/* Enter key nudges user to materials */
+['#pounds','#qty'].forEach(sel=>{
+  on(sel,'keydown', e=>{
+    if(e.key==='Enter'){
+      e.preventDefault();
+      const grid = $('#matGrid');
+      grid.scrollIntoView({behavior:'smooth',block:'center'});
+      grid.classList.add('pulse');
+      setTimeout(()=>grid.classList.remove('pulse'),300);
+    }
+  });
+});
+
 /* Order state */
 let selectedMat=null;
 const order=[];
 let __lastSavedOrder=null;
+let lastGrandTotal = 0;
+let isSaving=false;
+
+/* Material selection highlight helper */
+function highlightSelectedMat(key){
+  document.querySelectorAll('.mat-btn').forEach(btn=>{
+    if(btn.dataset.matKey===key) btn.classList.add('mat-btn--selected');
+    else btn.classList.remove('mat-btn--selected');
+  });
+}
 
 /* Material click */
 function onMaterial(key){
   selectedMat=key;
   $('#chosenMatLabel').textContent='Material: '+materials[key].label;
+  highlightSelectedMat(key);
+
   const panel=$('#choicePanel');
   const grid=$('#matGrid');
   panel.innerHTML='';
@@ -368,20 +467,25 @@ function makeChoiceBtn(txt, handler){
   const b=document.createElement('button');
   b.className='btn primary';
   b.textContent=txt;
-  b.addEventListener('click', handler);
+  b.addEventListener('click', ()=>lockClick(b, handler));
   return b;
 }
 function flashHint(msg){
   const el=$('#pickedHint');
   const prev=el.textContent;
   el.textContent=msg;
-  setTimeout(()=>{ el.textContent=prev; },1200);
+  el.classList.add('error');
+  setTimeout(()=>{
+    el.textContent=prev;
+    el.classList.remove('error');
+  },1400);
 }
 function resetMaterialChoice(){
   selectedMat=null;
   $('#chosenMatLabel').textContent='Material: —';
   $('#choicePanel').style.display='none';
   $('#matGrid').style.display='grid';
+  document.querySelectorAll('.mat-btn').forEach(btn=>btn.classList.remove('mat-btn--selected'));
 }
 
 /* Add items */
@@ -416,6 +520,7 @@ function addWeightItem(kind){
   resetMaterialChoice();
   renderOrder();
 }
+
 function addCountItem(per){
   if(!selectedMat) return;
   const qty=+($('#qty').value||0);
@@ -439,6 +544,13 @@ function addCountItem(per){
   renderOrder();
 }
 
+/* Enable/disable Save button */
+function updateSaveEnabled(){
+  const btn = $('#saveOrder');
+  if(!btn) return;
+  btn.disabled = isSaving || order.length===0;
+}
+
 /* Render order */
 function renderOrder(){
   const tb=$('#orderTable tbody');
@@ -448,14 +560,23 @@ function renderOrder(){
   order.forEach((it,i)=>{
     const nm=(materials[it.mat]||{label:it.mat}).label;
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${nm}</td><td>${it.detail}</td><td class="pricecell">${money(it.subtotal)}</td><td><button class="btn" data-i="${i}">✕</button></td>`;
+    tr.innerHTML=`<td>${nm}</td><td>${it.detail}</td><td class="pricecell">${money(it.subtotal)}</td><td><button class="btn-ghost-danger" data-i="${i}">✕</button></td>`;
     tb.appendChild(tr);
     if(it.type==='weight') wt+=it.subtotal; else crv+=it.subtotal;
   });
 
   $('#crvTotal').textContent=money(crv);
   $('#weightTotal').textContent=money(wt);
-  $('#grandTotal').textContent=money(crv+wt);
+  const grandCell = $('#grandTotal');
+  const newGrand = crv+wt;
+  grandCell.textContent=money(newGrand);
+
+  if(newGrand !== lastGrandTotal){
+    grandCell.classList.remove('pulse');
+    void grandCell.offsetWidth; // force reflow
+    grandCell.classList.add('pulse');
+    lastGrandTotal = newGrand;
+  }
 
   tb.querySelectorAll('button[data-i]').forEach(b=>{
     b.addEventListener('click',()=>{
@@ -465,6 +586,7 @@ function renderOrder(){
   });
 
   $('#printLast').disabled=!__lastSavedOrder;
+  updateSaveEnabled();
 }
 
 /* Clear with confirmation */
@@ -509,6 +631,7 @@ auth.onAuthStateChanged(user=>{
     $('#loginHint').textContent='';
     if(authScreen) authScreen.style.display='none';
     if(app) app.style.display='block';
+    setTimeout(()=>$('#pounds').focus(), 200);
   }else{
     setCloud('Cloud: offline');
     $('#staffStatus').textContent='Staff: guest';
@@ -518,27 +641,35 @@ auth.onAuthStateChanged(user=>{
 });
 
 /* Login + logout */
-on('#loginBtn','click', async ()=>{
-  const email=$('#loginEmail').value.trim();
-  const pass=$('#loginPass').value.trim();
-  const hint=$('#loginHint');
-  hint.textContent='Signing in…';
-  try{
-    await auth.signInWithEmailAndPassword(email,pass);
-    hint.textContent='Signed in ✔';
-  }catch(e){
-    console.error(e);
-    const code=e.code||'';
-    const map={
-      'auth/invalid-email':'Invalid email.',
-      'auth/user-not-found':'User not found.',
-      'auth/wrong-password':'Wrong password.'
-    };
-    hint.textContent=map[code]||('Login failed: '+code);
-  }
+on('#loginBtn','click', ()=>{
+  const btn = $('#loginBtn');
+  lockClick(btn, async ()=>{
+    const email=$('#loginEmail').value.trim();
+    const pass=$('#loginPass').value.trim();
+    const hint=$('#loginHint');
+    hint.textContent='Signing in…';
+    hint.classList.remove('error');
+    try{
+      await auth.signInWithEmailAndPassword(email,pass);
+      hint.textContent='Signed in ✔';
+      setTimeout(()=>{ hint.textContent=''; },1200);
+    }catch(e){
+      console.error(e);
+      const code=e.code||'';
+      const map={
+        'auth/invalid-email':'Invalid email.',
+        'auth/user-not-found':'User not found.',
+        'auth/wrong-password':'Wrong password.'
+      };
+      hint.textContent=map[code]||('Login failed: '+code);
+      hint.classList.add('error');
+    }
+  });
 });
-on('#logoutBtn','click', async ()=>{
-  try{ await auth.signOut(); $('#loginHint').textContent='Signed out'; }catch{}
+on('#logoutBtn','click', ()=>{
+  lockClick($('#logoutBtn'), async ()=>{
+    try{ await auth.signOut(); $('#loginHint').textContent='Signed out'; }catch{}
+  });
 });
 
 /* ---------- Save Order to Firestore ---------- */
@@ -552,6 +683,7 @@ function currentTotals(){
 async function saveOrderToCloud(){
   const hint=$('#saveHint');
   hint.textContent='';
+  hint.classList.remove('error');
   if(!order.length){ hint.textContent='Add some items first.'; return; }
   if(!auth.currentUser){ hint.textContent='Sign in as admin first.'; return; }
 
@@ -563,19 +695,29 @@ async function saveOrderToCloud(){
   };
 
   try{
-    console.log('Saving order', payload);
+    isSaving=true;
+    updateSaveEnabled();
+    const btn=$('#saveOrder');
+    const prevText=btn.textContent;
+    btn.textContent='Saving…';
     await db.collection('orders').doc(payload.id).set(payload);
     __lastSavedOrder=payload;
     order.length=0;
     renderOrder();
     hint.textContent='Saved to cloud ✔';
+    btn.textContent=prevText;
+    isSaving=false;
+    updateSaveEnabled();
     setTimeout(()=>{ hint.textContent=''; },1500);
   }catch(e){
     console.error('Save failed', e);
+    isSaving=false;
+    updateSaveEnabled();
     hint.textContent='Save failed: '+(e.code||e.message||String(e));
+    hint.classList.add('error');
   }
 }
-on('#saveOrder','click', saveOrderToCloud);
+on('#saveOrder','click', ()=>lockClick($('#saveOrder'), saveOrderToCloud, 400));
 
 /* ---------- Prices (cloud sync) ---------- */
 function buildPricesForm(){
@@ -697,23 +839,32 @@ on('#viewOrders','click', async ()=>{
       header.className='row';
       header.style.justifyContent='space-between';
       header.style.alignItems='center';
+
+      const leftWrap=document.createElement('div');
+      leftWrap.style.display='flex';
+      leftWrap.style.flexDirection='column';
+      leftWrap.style.gap='2px';
+
       const left=document.createElement('b');
       left.textContent=o.id;
       const info=document.createElement('span');
       info.className='hint';
       info.textContent=new Date(o.when).toLocaleString();
+      leftWrap.append(left,info);
+
       const btnRow=document.createElement('div');
       btnRow.className='row';
       const codeBtn=document.createElement('button');
       codeBtn.className='btn';
-      codeBtn.textContent='Code';
+      codeBtn.textContent='Barcode';
       codeBtn.addEventListener('click',()=>showBarcode(o.id));
       const rcptBtn=document.createElement('button');
       rcptBtn.className='btn';
       rcptBtn.textContent='Receipt';
       rcptBtn.addEventListener('click',()=>printReceipt(o));
       btnRow.append(codeBtn,rcptBtn);
-      header.append(left,info,btnRow);
+
+      header.append(leftWrap,btnRow);
       const ul=document.createElement('ul');
       ul.innerHTML=(o.items||[]).map(it=>`<li>${(materials[it.mat]||{label:it.mat}).label} — ${it.detail} <b>${money(it.subtotal)}</b></li>`).join('');
       const totals=document.createElement('div');
@@ -729,7 +880,7 @@ on('#viewOrders','click', async ()=>{
     ordersModal.showModal();
   }catch(e){
     console.error(e);
-    list.innerHTML='<div class="hint">Error loading orders (check rules / auth).</div>';
+    list.innerHTML='<div class="hint error">Error loading orders (check rules / auth).</div>';
     ordersModal.showModal();
   }
 });
@@ -740,6 +891,7 @@ let stream=null, codeReader=null;
 on('#scanBtn','click', ()=>{
   $('#scanOrder').style.display='none';
   $('#scanResult').textContent='Point camera at barcode.';
+  $('#scanResult').classList.remove('error');
   scanModal.showModal();
 });
 on('#startCam','click', ()=>{
@@ -767,7 +919,8 @@ async function startScan(){
   }catch(e){
     console.error(e);
     $('#camState').textContent='Camera: error';
-    alert(e.message||e);
+    $('#scanResult').textContent=e.message||e;
+    $('#scanResult').classList.add('error');
   }
 }
 function stopScan(){
@@ -780,6 +933,7 @@ function stopScan(){
 async function onScan(val){
   stopScan();
   $('#scanResult').textContent='Scanned: '+val;
+  $('#scanResult').classList.remove('error');
   let o=null;
   try{ const snap=await db.collection('orders').doc(val).get(); if(snap.exists) o=snap.data(); }catch(e){ console.error(e); }
   if(o){
@@ -795,9 +949,15 @@ async function onScan(val){
       </div>`;
   }else{
     $('#scanOrder').style.display='block';
-    $('#scanOrder').innerHTML="<div class='hint'>No order with that ID.</div>";
+    $('#scanOrder').innerHTML="<div class='hint error'>No order with that ID.</div>";
   }
 }
+
+/* Autofocus on first load (before login state known, it'll kick in after auth too) */
+window.addEventListener('load', ()=>{
+  const w = $('#pounds');
+  if(w){ setTimeout(()=>w.focus(), 300); }
+});
 </script>
 </body>
 </html>
